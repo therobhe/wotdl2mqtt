@@ -3,7 +3,7 @@
 ## Overview
 This adaption of the [WoTDL2API](https://github.com/heseba/wotdl2api) toolchain includes an MQTT extended version of the [WoTDL OWL Ontology](https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl/wotdl.owl) within mqttwotdl.ttl. 
 
-Similar to WoTDL2API, the ontology enables the generation of AsyncAPI specifications and is part of the GrOWTH approach for Goal-Oriented End User Development for Web of Things Devices. [1] 
+Similar to WoTDL2API, instances of the MQTT enhanced ontology can be used to generate AsyncAPI specifications and is part of the GrOWTH approach for Goal-Oriented End User Development for Web of Things Devices. [1] 
 
 It uses a model-to-model transformation to generate an [AsyncAPI](https://www.asyncapi.com/) specification. 
 The Flask-based AsyncAPI is generated through the developed code generator within 02_asyncAPI_codegen.py.
