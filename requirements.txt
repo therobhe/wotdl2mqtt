@@ -1,0 +1,4 @@
+flask
+rdflib >= 4.2.2
+PyYAML >= 3.13
+connexion >= 2.2.0
