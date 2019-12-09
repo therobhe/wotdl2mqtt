@@ -10,9 +10,6 @@ from flask_mqtt import Mqtt
 from flask_socketio import SocketIO
 import re
 import importlib
-# device implementations
-from implementations import dc_motor_fan, heating_thread, philipshue, relay_heating, samsung_tv, thermostat
-
 
 # eventlet.monkey_patch()
 
@@ -84,7 +81,6 @@ def subscribe(topic):
 # when clients connects to server, let him subscribe to all topics
 @mqtt.on_connect()
 def handle_connect(client, userdata, flags, rc):
-
     # ToDO: check for type of device (sensor/actuator) + check device category (light) and assign the correct subscription to
     subscribe_topics()
 
@@ -102,7 +98,6 @@ def callback1(message):
     # ToDO: call switch_on_lamp
     print('Callback 1: ' + message)
     invoke_implementation()
-
 
 # phil hue off
 @subscribe('light/1/off')
@@ -241,7 +236,6 @@ INIT_FUNCTION_NAME = 'init'
 # ToDO: Call the device hub with implementations
 def invoke_implementation(function_name, params, kwargs, request, device):
     import_path = IMPLEMENTATION_PATH + '.' + device
-
     implementation_spec = importlib.util.find_spec(import_path)
     found = implementation_spec is not None
     #look for implementation
