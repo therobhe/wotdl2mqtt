@@ -80,7 +80,7 @@ def subscribe(topic):
         return func
 
     return decorator
-
+# lol
 # when clients connects to server, let him subscribe to all topics
 @mqtt.on_connect()
 def handle_connect(client, userdata, flags, rc):
