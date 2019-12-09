@@ -1,15 +1,16 @@
-# WoTDL Ontology to REST
+# WoTDL Ontology to AsyncAPI
 
 ## Overview
-This toolchain allows to generate REST APIs from instances of the [WoTDL OWL Ontology](https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl/wotdl.owl), which is part of the GrOWTH approach for Goal-Oriented End User Development for Web of Things Devices. [1] WoTDL has been listed on the [LOV4IoT Ontology Catalogue](http://lov4iot.appspot.com/?p=ontologies).
+This adaption of the [WoTDL2API](https://github.com/heseba/wotdl2api) toolchain includes an MQTT extended version of the [WoTDL OWL Ontology](https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl/wotdl.owl) within mqttwotdl.ttl. 
 
-It uses a model-to-model transformation to generate an [OpenAPI](https://openapis.org) specification. 
-The Flask-based REST API is generated using [OpenAPI Generator](https://openapi-generator.tech).
+Similar to WoTDL2API, the ontology enables the generation of AsyncAPI specifications and is part of the GrOWTH approach for Goal-Oriented End User Development for Web of Things Devices. [1] 
+
+It uses a model-to-model transformation to generate an [AsyncAPI](https://www.asyncapi.com/) specification. 
+The Flask-based AsyncAPI is generated through the developed code generator within 02_asyncAPI_codegen.py.
 
 ## Requirements
 - Python 3.7.0+
 - for python requirements see requirements.txt
-- openapi-generator 3.3.4+
 
 ## Usage
 Get the dependencies:
@@ -20,7 +21,7 @@ pip install -r requirements.txt
 Adapt the IN variable to point to your ontology instance and run the model-to-model transformation:
 
 ```
-python m2m_openapi.py
+python m2m_asyncapi.py
 ```
 
 Run the model-to-text generation:
@@ -31,7 +32,6 @@ Run the model-to-text generation:
 
 
 ## References
-If you want to use or extend our toolchain, please consider citing the related publications:
 
 [1] Noura M., Heil S., Gaedke M. (2018) GrOWTH: Goal-Oriented End User Development for Web of Things Devices. In: Mikkonen T., Klamma R., Hernández J. (eds) Web Engineering. ICWE 2018. Lecture Notes in Computer Science, vol 10845. Springer, Cham
 
