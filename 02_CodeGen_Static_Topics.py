@@ -51,7 +51,7 @@ callback_names = defaultdict(list)
 
 # build dict with kwargs
 def defaultArgs(default_kw):
-    "decorator to assign default kwargs"
+    # decorator to assign default kwargs
     def wrap(f):
         def wrapped_f(**kwargs):
             kw = {}
@@ -81,6 +81,7 @@ def subscribe(topic):
 @mqtt.on_connect()
 def handle_connect(client, userdata, flags, rc):
     # ToDO: check for type of device (sensor/actuator) + check device category (light) and assign the correct subscription to
+    defaultArgs(defaults)
     subscribe_topics()
 
 
@@ -96,7 +97,7 @@ def handle_connect(client, userdata, flags, rc):
 def callback1(message):
     # ToDO: call switch_on_lamp
     print('Callback 1: ' + message)
-    invoke_implementation(switch_on_lamp, message.payload, message.topic, request, device)
+    invoke_implementation('switch_on_lamp', parameter_registery, defaultArgs(defaults), request, device)
 
 # phil hue off
 @subscribe('light/1/off')
