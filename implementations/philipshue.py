@@ -10,6 +10,7 @@ def switch_on_lamp(a=1):
     #r = requests.put(LAMP_ENDPOINT, data=j)
     #return Response('hue on', status=200)
     print("lamp is on!")
+
 def switch_off_lamp(a=1):
     #j = json.dumps({"on": False})
     #r = requests.put(LAMP_ENDPOINT, data=j)
