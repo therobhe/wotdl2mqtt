@@ -97,7 +97,7 @@ def handle_connect(client, userdata, flags, rc):
 def callback1(message):
     # ToDO: call switch_on_lamp
     print('Callback 1: ' + message)
-    invoke_implementation('switch_on_lamp', parameter_registery, defaultArgs(defaults), request, device)
+    invoke_implementation('switch_on_lamp', message.payload, defaultArgs(defaults), request, device)
 
 # phil hue off
 @subscribe('light/1/off')
@@ -215,7 +215,8 @@ def match_keys_and_parameters(topic):
 def invoke_callbacks(matching_keys, parameters, payload):
     for topic in matching_keys:
         for callback in registry[topic]:
-            callback(payload, **parameters)
+            #callback(payload, **parameters)
+            callback(matching_keys, parameters, payload)
 
 # loop through the reg.keys(topics) of the dict that matches the topic (compiled) which should be subscribed
 def subscribe_topics():

@@ -744,7 +744,7 @@ payload:
 payload:
     type: string"""^^xsd:string ;
                   :mqttEndpoint "mqtt://localhost"^^xsd:string ;
-                  :subscribesTo "fan/{id}/decreaseSpeed"^^xsd:string .
+                  :subscribesTo "fan/3/decreaseSpeed"^^xsd:string .
 
 
 ###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#DecreaseSpeed
@@ -823,7 +823,7 @@ payload:
 payload:
     type: string"""^^xsd:string ;
         :mqttEndpoint "mqtt://localhost"^^xsd:string ;
-        :subscribesTo "fan/{id}/setSpeed"^^xsd:string ;
+        :subscribesTo "fan/3/setSpeed"^^xsd:string ;
         <http://www.semanticweb.org/owl/owlapi/turtle#httpMethod> "POST"^^xsd:string .
 
 
@@ -854,7 +854,7 @@ payload:
 payload:
     type: string"""^^xsd:string ;
             :mqttEndpoint "mqtt://localhost"^^xsd:string ;
-            :subscribesTo "fan/{id}/off"^^xsd:string .
+            :subscribesTo "fan/3/off"^^xsd:string .
 
 
 ###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#Heating
@@ -878,7 +878,7 @@ payload:
 payload:
     type: string"""^^xsd:string ;
             :mqttEndpoint "mqtt://localhost"^^xsd:string ;
-            :subscribesTo "heating/{id}/off"^^xsd:string .
+            :subscribesTo "heating/2/off"^^xsd:string .
 
 
 ###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#HeatingOffEffect
@@ -925,7 +925,7 @@ payload:
 payload:
     type: string"""^^xsd:string ;
            :mqttEndpoint "mqtt://localhost"^^xsd:string ;
-           :subscribesTo "heating/{id}/on"^^xsd:string ;
+           :subscribesTo "heating/2/on"^^xsd:string ;
            <http://www.semanticweb.org/owl/owlapi/turtle#httpMethod> "POST"^^xsd:string .
 
 
@@ -1015,7 +1015,7 @@ payload:
 payload:
     type: string"""^^xsd:string ;
                   :mqttEndpoint "mqtt://localhost"^^xsd:string ;
-                  :subscribesTo "fan/{id}/increaseSpeed"^^xsd:string ;
+                  :subscribesTo "fan/2/increaseSpeed"^^xsd:string ;
                   <http://www.semanticweb.org/owl/owlapi/turtle#httpMethod> "POST"^^xsd:string .
 
 
@@ -1061,7 +1061,7 @@ payload:
 payload:
     type: string"""^^xsd:string ;
          :mqttEndpoint "mqtt://localhost"^^xsd:string ;
-         :subscribesTo "light/{id}/off"^^xsd:string .
+         :subscribesTo "light/1/off"^^xsd:string .
 
 
 ###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#LampOffPrecondition
@@ -1204,7 +1204,7 @@ payload:
 payload:
     type: string"""^^xsd:string ;
                :mqttEndpoint "mqtt://localhost"^^xsd:string ;
-               :subscribesTo "thermostat/{id}/setTemperature"^^xsd:string ;
+               :subscribesTo "thermostat/1/setTemperature"^^xsd:string ;
                <http://www.semanticweb.org/owl/owlapi/turtle#httpMethod> "PUT"^^xsd:string .
 
 
@@ -1256,7 +1256,7 @@ payload:
 payload:
     type: string"""^^xsd:string ;
        :mqttEndpoint "mqtt://localhost"^^xsd:string ;
-       :subscribesTo "tv/{id}/off"^^xsd:string .
+       :subscribesTo "tv/4/off"^^xsd:string .
 
 
 ###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#TvOn
@@ -1280,7 +1280,7 @@ payload:
 payload:
     type: string"""^^xsd:string ;
       :mqttEndpoint "mqtt://localhost"^^xsd:string ;
-      :subscribesTo "tv/{id}/on"^^xsd:string ;
+      :subscribesTo "tv/4/on"^^xsd:string ;
       <http://www.semanticweb.org/owl/owlapi/turtle#httpMethod> "POST"^^xsd:string .
 
 
