@@ -40,7 +40,7 @@ mqtt = Mqtt(app)
 # variables for collecting messages on events happening
 # socketIO for real time communication
 socketio = SocketIO(app)
-# for storing the topics and corresponding callbacks: <t1:call1>, <t2:call2>...
+# for storing the topics + messages
 registry = defaultdict(list)
 # compile xml-styled input for match() and search() methods
 topic_variables = re.compile(r'{.+?}')
@@ -51,7 +51,7 @@ callback_names = defaultdict(list)
 
 # build dict with kwargs
 def defaultArgs(default_kw):
-    # decorator to assign default kwargs
+    "decorator to assign default kwargs"
     def wrap(f):
         def wrapped_f(**kwargs):
             kw = {}
@@ -75,13 +75,13 @@ def subscribe(topic):
         # fill registry dict with sub-topic
         registry[topic].append(func)
         return func
+
     return decorator
 
 # when clients connects to server, let him subscribe to all topics
 @mqtt.on_connect()
 def handle_connect(client, userdata, flags, rc):
     # ToDO: check for type of device (sensor/actuator) + check device category (light) and assign the correct subscription to
-    defaultArgs(defaults)
     subscribe_topics()
 
 
@@ -97,7 +97,7 @@ def handle_connect(client, userdata, flags, rc):
 def callback1(message):
     # ToDO: call switch_on_lamp
     print('Callback 1: ' + message)
-    invoke_implementation('switch_on_lamp', message.payload, defaultArgs(defaults), request, device)
+    invoke_implementation()
 
 # phil hue off
 @subscribe('light/1/off')
@@ -148,7 +148,6 @@ def callback8(message):
     # ToDO: call increase_fan_speed in dc_motor_fan
     print('Callback 8: ' + message)
     invoke_implementation()
-
 # speed down fan
 @subscribe('fan/3/decrease')
 def callback9(message):
@@ -213,10 +212,12 @@ def match_keys_and_parameters(topic):
 
 # match the payload to the topic of the req with the callback
 def invoke_callbacks(matching_keys, parameters, payload):
+    #match keys = sammlung aller verfügbareb topics
     for topic in matching_keys:
+        print("Topic: " + topic)
+        # rufe den richtigen callback passend zum topic
         for callback in registry[topic]:
-            #callback(payload, **parameters)
-            callback(matching_keys, parameters, payload)
+            callback(payload, **parameters)
 
 # loop through the reg.keys(topics) of the dict that matches the topic (compiled) which should be subscribed
 def subscribe_topics():
