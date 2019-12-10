@@ -18,8 +18,6 @@ def fan_set(body):
     #hub.PERSISTENCE['SPEED'] = speed
     #return jsonify({'speed': speed})
 
-    # ToDO: invoke dummy code to see im the invoke implementation works!(always return 10 eg)
-
 def increase_fan_speed(body):
     print('Increment: ' + body['increment'])
     #increment = body['increment']

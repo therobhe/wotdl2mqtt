@@ -3,7 +3,7 @@ import paho.mqtt.publish as publish
 # set broker
 MQTT_SERVER = "localhost"
 
-# test all topic if callbacks are triggered
+# test for all topic if callbacks are triggered
 MQTT_TOPIC = "light/1/on"
 MQTT_TOPIC_TWO = "light/1/off"
 MQTT_TOPIC_THREE = "heating/2/on"
