@@ -489,7 +489,7 @@ payload:
         id:
           type: integer
           minimum: -10
-          description: Id of the temperature sensor
+          description: Id of the light sensor
         light:
           type: integer
           minimum: 0
@@ -698,7 +698,7 @@ payload:
 <http://www.semanticweb.org/owl/owlapi/turtle#TvOff> rdf:type owl:NamedIndividual .
 
 
-###  http://www.semanticweb.org/owl/owlapi/turtle#TvOn
+###  http://www.semanticweb.org/owl/owlapi/turtle#TvOna
 <http://www.semanticweb.org/owl/owlapi/turtle#TvOn> rdf:type owl:NamedIndividual .
 
 
@@ -1225,7 +1225,7 @@ payload:
 payload:
     type: string"""^^xsd:string ;
              wotdl:mqttEndpoint "mqtt://localhost" ;
-             wotdl:publishesOn "lights/27/off" .
+             wotdl:subscribesTo "lights/27/off" .
 
 
 ###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#TurnLampOn
