@@ -1228,6 +1228,7 @@ payload:
              wotdl:subscribesTo "light/1/off" .
 
 
+
 ###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#TurnLampOn
 :TurnLampOn rdf:type owl:NamedIndividual ,
                      wotdl:FixedValueEffect ;
