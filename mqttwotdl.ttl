@@ -18,8 +18,8 @@
 #    Annotation properties
 #################################################################
 
-###  http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#MQTTmessage
-wotdl:MQTTmessage rdf:type owl:AnnotationProperty .
+###  http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#mqttMessage
+wotdl:mqttMessage rdf:type owl:AnnotationProperty .
 
 
 ###  http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#mqttEndpoint
@@ -284,8 +284,8 @@ wotdl:waitAfterActuation rdf:type owl:DatatypeProperty ;
                                                        rdfs:label "pattern"@en .
 
 
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#MQTTmessage
-:MQTTmessage rdf:type owl:DatatypeProperty ;
+###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#mqttMessage
+:mqttMessage rdf:type owl:DatatypeProperty ;
              rdfs:domain :MqttCommunication ;
              rdfs:range xsd:string ;
              rdfs:label "MQTT message"@en .
@@ -462,7 +462,7 @@ ssn:Sensor rdf:type owl:Class .
 :MqttCommunication rdf:type owl:Class ;
                    rdfs:subClassOf wotdl:Actuation ,
                                    wotdl:Measurement ;
-                   rdfs:label "MQTT communication information" .
+                   rdfs:label "MQTT communication information"@en .
 
 
 #################################################################
@@ -482,7 +482,7 @@ ssn:Sensor rdf:type owl:Class .
                                                                        wotdl:httpMethod "GET"^^xsd:string ;
                                                                        wotdl:name "get_light_intensity"^^xsd:string ;
                                                                        wotdl:url "http://10.0.1.200/ambientlight"^^xsd:string ;
-                                                                       :MQTTmessage """contentType: application/json
+                                                                       :mqttMessage """contentType: application/json
 payload:
     type: object
       properties:
@@ -740,7 +740,7 @@ payload:
                   wotdl:httpMethod "POST"^^xsd:string ;
                   wotdl:name "decrease_fan_speed"^^xsd:string ;
                   wotdl:url "http://10.0.1.200/fan/decrease"^^xsd:string ;
-                  :MQTTmessage """contentType: application/json
+                  :mqttMessage """contentType: application/json
 payload:
     type: string"""^^xsd:string ;
                   :mqttEndpoint "mqtt://localhost"^^xsd:string ;
@@ -819,7 +819,7 @@ payload:
                     - target_speed"""^^xsd:string ;
         wotdl:name "fan_set"^^xsd:string ;
         wotdl:url "http://10.0.1.200/fan"^^xsd:string ;
-        :MQTTmessage """contentType: application/json
+        :mqttMessage """contentType: application/json
 payload:
     type: string"""^^xsd:string ;
         :mqttEndpoint "mqtt://localhost"^^xsd:string ;
@@ -850,7 +850,7 @@ payload:
             wotdl:httpMethod "POST"^^xsd:string ;
             wotdl:name "fan_turn_off"^^xsd:string ;
             wotdl:url "http://10.0.1.200/fan/off"^^xsd:string ;
-            :MQTTmessage """contentType: application/json
+            :mqttMessage """contentType: application/json
 payload:
     type: string"""^^xsd:string ;
             :mqttEndpoint "mqtt://localhost"^^xsd:string ;
@@ -874,7 +874,7 @@ payload:
             wotdl:httpMethod "POST"^^xsd:string ;
             wotdl:name "deactivate_heating"^^xsd:string ;
             wotdl:url "http://10.0.1.200/heating/off"^^xsd:string ;
-            :MQTTmessage """contentType: application/json
+            :mqttMessage """contentType: application/json
 payload:
     type: string"""^^xsd:string ;
             :mqttEndpoint "mqtt://localhost"^^xsd:string ;
@@ -921,7 +921,7 @@ payload:
                     - power"""^^xsd:string ;
            wotdl:name "activate_heating"^^xsd:string ;
            wotdl:url "http://10.0.1.134/heating/on"^^xsd:string ;
-           :MQTTmessage """contentType: application/json
+           :mqttMessage """contentType: application/json
 payload:
     type: string"""^^xsd:string ;
            :mqttEndpoint "mqtt://localhost"^^xsd:string ;
@@ -968,7 +968,7 @@ payload:
            wotdl:httpMethod "GET"^^xsd:string ;
            wotdl:name "get_humidity"^^xsd:string ;
            wotdl:url "http://10.0.1.200/humidity"^^xsd:string ;
-           :MQTTmessage """contentType: application/json
+           :mqttMessage """contentType: application/json
 payload:
     type: object
       properties:
@@ -1011,7 +1011,7 @@ payload:
                     - increment"""^^xsd:string ;
                   wotdl:name "increase_fan_speed"^^xsd:string ;
                   wotdl:url "http://10.0.1.200/fan/increase"^^xsd:string ;
-                  :MQTTmessage """contentType: application/json
+                  :mqttMessage """contentType: application/json
 payload:
     type: string"""^^xsd:string ;
                   :mqttEndpoint "mqtt://localhost"^^xsd:string ;
@@ -1057,7 +1057,7 @@ payload:
          wotdl:httpMethod "PUT"^^xsd:string ;
          wotdl:name "switch_off_lamp"^^xsd:string ;
          wotdl:url "http://10.0.1.200/lights/off"^^xsd:string ;
-         :MQTTmessage """contentType: application/json
+         :mqttMessage """contentType: application/json
 payload:
     type: string"""^^xsd:string ;
          :mqttEndpoint "mqtt://localhost"^^xsd:string ;
@@ -1088,7 +1088,7 @@ payload:
         wotdl:httpMethod "PUT"^^xsd:string ;
         wotdl:name "switch_on_lamp"^^xsd:string ;
         wotdl:url "http://10.0.1.200/lights/on"^^xsd:string ;
-        :MQTTmessage """contentType: application/json
+        :mqttMessage """contentType: application/json
 payload:
     type: string"""^^xsd:string ;
         :mqttEndpoint "mqtt://localhost"^^xsd:string ;
@@ -1149,7 +1149,7 @@ payload:
               wotdl:httpMethod "GET"^^xsd:string ;
               wotdl:name "get_temperature"^^xsd:string ;
               wotdl:url "http://10.0.1.200/temperature"^^xsd:string ;
-              :MQTTmessage """contentType: application/json
+              :mqttMessage """contentType: application/json
 payload:
     type: object
       properties:
@@ -1200,7 +1200,7 @@ payload:
                     - targetTemperature"""^^xsd:string ;
                wotdl:name "thermostat_set"^^xsd:string ;
                wotdl:url "http://10.0.1.200/thermostat"^^xsd:string ;
-               :MQTTmessage """contentType: application/json
+               :mqttMessage """contentType: application/json
 payload:
     type: string"""^^xsd:string ;
                :mqttEndpoint "mqtt://localhost"^^xsd:string ;
@@ -1221,7 +1221,7 @@ payload:
                       wotdl:FixedValueEffect ;
              wotdl:affects <http://www.semanticweb.org/owl/owlapi/turtle#LampPowerState> ;
              wotdl:value "off"^^rdfs:Literal ;
-             wotdl:MQTTmessage """contentType: application/json
+             wotdl:mqttMessage """contentType: application/json
 payload:
     type: string"""^^xsd:string ;
              wotdl:mqttEndpoint "mqtt://localhost" ;
@@ -1252,7 +1252,7 @@ payload:
        wotdl:httpMethod "GET"^^xsd:string ;
        wotdl:name "switch_off_tv"^^xsd:string ;
        wotdl:url "http://10.0.1.200/tv/{path-param}/needed/off?queryParam1={myQueryStuff}"^^xsd:string ;
-       :MQTTmessage """contentType: application/json
+       :mqttMessage """contentType: application/json
 payload:
     type: string"""^^xsd:string ;
        :mqttEndpoint "mqtt://localhost"^^xsd:string ;
@@ -1276,7 +1276,7 @@ payload:
                     - power"""^^xsd:string ;
       wotdl:name "switch_on_tv"^^xsd:string ;
       wotdl:url "http://10.0.1.200/tv/{path-param}/needed/on"^^xsd:string ;
-      :MQTTmessage """contentType: application/json
+      :mqttMessage """contentType: application/json
 payload:
     type: string"""^^xsd:string ;
       :mqttEndpoint "mqtt://localhost"^^xsd:string ;
