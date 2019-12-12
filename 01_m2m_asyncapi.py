@@ -7,8 +7,8 @@ from rdflib import OWL, RDFS, Namespace
 from urllib.parse import urlparse
 from collections import defaultdict
 
-# Import WoTDL_with_MQTT ontology
-IN = 'sample.ttl'
+# Import MQTT_Ontology
+IN = 'mqttwotdl.ttl'
 WOTDL = Namespace('http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#')
 
 instance = rdflib.Graph()

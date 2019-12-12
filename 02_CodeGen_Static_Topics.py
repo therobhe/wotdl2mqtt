@@ -97,7 +97,8 @@ def handle_connect(client, userdata, flags, rc):
 def callback1(message):
     # ToDO: call switch_on_lamp
     print('Callback 1: ' + message)
-    invoke_implementation('switch_on_lamp', parameter_registery[message], defaultArgs(defaults), req, device)
+    # ToDO: what is req, what is device?
+    invoke_implementation('switch_on_lamp', parameter_registery[message.topic], defaultArgs(defaults), request, device)
 
 # phil hue off
 @subscribe('light/1/off')
