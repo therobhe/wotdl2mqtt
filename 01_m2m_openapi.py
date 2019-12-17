@@ -57,7 +57,6 @@ for resource in resources:
             'operationId': str(request['name']),
             'summary': str(request['name']) + ' request on device ' + str(request['device'])
         }
-        print(entry)
         parameters = []
         add_parameters = False
 
