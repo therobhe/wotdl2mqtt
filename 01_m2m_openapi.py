@@ -51,12 +51,8 @@ for resource in resources:
     requests = resources[resource]
     paths[str(resource)] = {}
     responses = {}
-    #ToDO: REMOVE
-    print(resource)
 
     for request in requests:
-        #ToDO: REMOVE
-        print(request)
         entry = {
             'operationId': str(request['name']),
             'summary': str(request['name']) + ' request on device ' + str(request['device'])
@@ -85,9 +81,7 @@ for resource in resources:
             responses['200'] = {'description': 'OK'}
         elif request['method'] == 'post':
             responses['201'] = {'description': 'Created'}
-        # build response
-        # ToDO: REMOVE
-        # print(responses)
+
         entry['responses'] = responses
 
         paths[str(resource)][str(request['method'])] = entry
