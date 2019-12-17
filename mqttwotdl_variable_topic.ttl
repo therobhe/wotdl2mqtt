@@ -288,14 +288,14 @@ wotdl:waitAfterActuation rdf:type owl:DatatypeProperty ;
 :MQTTmessage rdf:type owl:DatatypeProperty ;
              rdfs:domain :MqttCommunication ;
              rdfs:range xsd:string ;
-             rdfs:label "MQTT message"@en .
+             rdfs:label "mqttMessage"@en .
 
 
 ###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#mqttEndpoint
 :mqttEndpoint rdf:type owl:DatatypeProperty ;
               rdfs:domain :MqttCommunication ;
               rdfs:range xsd:string ;
-              rdfs:label "MQTT endpoint"@en .
+              rdfs:label "mqttEndpoint"@en .
 
 
 ###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#publishesOn

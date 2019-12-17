@@ -6,7 +6,7 @@ from rdflib import OWL, RDFS, Namespace
 from urllib.parse import urlparse
 from collections import defaultdict
 
-IN = 'sample.ttl'
+IN = 'icwe2019.ttl'
 WOTDL = Namespace('http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#')
 
 instance = rdflib.Graph()
@@ -52,16 +52,16 @@ for resource in resources:
     paths[str(resource)] = {}
     responses = {}
     #ToDO: REMOVE
-    # print(resource)
+    print(resource)
 
     for request in requests:
         #ToDO: REMOVE
-        # print(request)
+        print(request)
         entry = {
             'operationId': str(request['name']),
             'summary': str(request['name']) + ' request on device ' + str(request['device'])
         }
-        # print(entry)
+        print(entry)
         parameters = []
         add_parameters = False
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-PORT=1883
+PORT=9000
 MODULE=wot_api
-API=api.yaml
+API=written_api.yaml
 GENERATOR_PATH=/usr/local/Cellar/openapi-generator/3.3.4/bin
 PYTHON_PATH=~/virtualenvs/WotDL2API_NEW/bin
 TARGET=flask_out
