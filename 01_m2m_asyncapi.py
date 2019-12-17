@@ -1,8 +1,9 @@
-
 import rdflib
 import yaml
 import json
 import fileinput
+
+from Tools.scripts.make_ctype import method
 from rdflib import OWL, RDFS, Namespace
 from urllib.parse import urlparse
 from collections import defaultdict
@@ -14,43 +15,43 @@ WOTDL = Namespace('http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wot
 instance = rdflib.Graph()
 instance.parse(IN, format='n3')
 
-# ToDO: check for mqttcommuicatio instead -> exchange every http for mqttcommunication
-find_http_requests = """SELECT ?d ?device ?http_request ?name ?method ?url ?body
+# extract mqttCommunicaiton information
+find_mqtt_requests = """SELECT ?d ?device ?mqtt_request ?name ?subscribe ?publish ?endpoint ?message
        WHERE {
             ?d a ?device_subclass.
             ?device_subclass a owl:Class.
             ?device_subclass rdfs:subClassOf wotdl:Device.
             OPTIONAL{ ?d wotdl:name ?device }
-            ?http_request a wotdl:HttpRequest .
-            OPTIONAL{?http_request wotdl:name ?name}
-            ?http_request wotdl:httpMethod ?method .
-            ?http_request wotdl:url ?url . 
-            OPTIONAL{?http_request wotdl:httpBody ?body}
+            ?mqtt_request a wotdl:MqttCommunication .
+            OPTIONAL{?mqtt_request wotdl:name ?name}
+            ?mqtt_request wotdl:subscribesTo ?subscribe .
+            ?mqtt_request wotdl:publishesOn ?publish .
+            ?mqtt_request wotdl:mqttEndpoint ?endpoint . 
+            OPTIONAL{?mqtt_request wotdl:mqttMessage ?message}
             {
                 ?d wotdl:hasTransition ?t.
-                ?t wotdl:hasActuation ?http_request.
+                ?t wotdl:hasActuation ?mqtt_request.
             } 
             UNION 
             { 
-                ?d wotdl:hasMeasurement ?http_request.                          
+                ?d wotdl:hasMeasurement ?mqtt_request.                          
             }
         }
 """
 
 # paths = channels ? -> fill with light/heat/fan 'categories' from ontology
 channels = defaultdict(dict)
-http_requests = instance.query(find_http_requests, initNs={'wotdl': WOTDL, 'rdfs': RDFS, 'owl': OWL})
+mqtt_requests = instance.query(find_mqtt_requests, initNs={'wotdl': WOTDL, 'rdfs': RDFS, 'owl': OWL})
 
 # resources -> describes device(id + schema[properties(speed), required props etc]) & operations (increase, decrease temp etc)
 resources = defaultdict(list)
 
 # fill resource dict
-for device, devicename, http_request, name, method, url, body in http_requests:
-    print('%s %s %s %s %s %s' % (device, http_request, name, method, url, body))
-    url = urlparse(url)
-    resources[url.path].append(
-        {'method': method.lower(), 'device': devicename, 'name': name, 'query_params': url.query, 'body': body})
-
+for device, devicename, mqtt_request, name, subscribe, publish, endpoint, message in mqtt_requests:
+    print('%s %s %s %s %s %s %s' % (device, mqtt_request, name, subscribe, publish, endpoint, message))
+    resources[endpoint].append(
+        {'subscribesTo' : subscribe.lower(), 'publishesOn' : publish.lower(), 'device' : devicename, 'name' : name,
+         'message' : message})
 
 for resource in resources:
 	# read out resource -> contains a path element (/fan + operations...)
@@ -60,7 +61,6 @@ for resource in resources:
     responses = {}
 
     for request in requests:
-		# post, get, put etc building
         entry = {
             'operationId': str(request['name']),
             'summary': str(request['name']) + ' request on device ' + str(request['device'])
@@ -80,24 +80,19 @@ for resource in resources:
         if add_parameters:
             entry['parameters'] = parameters
 
-        if request['body'] != None:
-            entry['requestBody'] = yaml.load(str(request['body']))
+        if request['message'] != None:
+            entry['payload'] = yaml.load(str(request['message']))
 
-        if request['method'] == 'get':
-            responses['200'] = {'description': 'OK'}
-        elif request['method'] == 'post':
-            responses['201'] = {'description': 'Created'}
+        #ToDO: method -> pub and sub difference -> introduce both, check which is empty!
+        #if request['method'] == 'get':
+        #    responses['200'] = {'description': 'OK'}
+        #elif request['method'] == 'post':
+        #    responses['201'] = {'description': 'Created'}
 
         entry['responses'] = responses
 
         channels[str(resource)][str(request['method'])] = entry
 
-
-
-
-# ToDO: extract channel, pub-sub schema, device id, device operation information from ontology
-# ...
-# build async_api body
 
 # create asyncapi overhead for file
 port = 1883
@@ -111,6 +106,7 @@ async_api = {
     # for security add: , 'security': [{'user-password':'[]'}]
     'servers': [{'mosquitto': {'url': '0.0.0.0:' + str(port)}, 'protocol': 'mqtt'}],
 
+    'channels':dict(channels)
 }
 
 

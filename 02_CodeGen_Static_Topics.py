@@ -1,27 +1,91 @@
-
-# Python code generation: get MQTT request, match the parameters to the parameter name,
-# call the central hub class with the required information -> delivers suitable device code, load  & invoke, pass to param
+#--------------------Python Code Generator for MQTT-Ontology------------------------------------------------------------
+# part of the WoTDL2MQTT toolchain - invokes runnable source code from the mqttwotdl ontology instance
+# requirement: a local broker instance needs to run in the background in order to run this program
+# (c) Robert Heinemann 2019
 
 from collections import defaultdict
 import eventlet
 import json
+import rdflib
+from rdflib import OWL, RDFS, Namespace
 from flask import Flask, render_template
 from flask_mqtt import Mqtt
 from flask_socketio import SocketIO
 import re
 import importlib
+import hub
 
 # eventlet.monkey_patch()
 
+
+#--------------------------IMPORT-ONTOLOGY-+-EXTRACT-MQTTCOMMUNICATION-INFORMATION--------------------------------------
+
+#import mqtt-ontology to extract device parameter for invoking implementations
+IN = 'mqttwotdl.ttl'
+WOTDL = Namespace('http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#')
+instance = rdflib.Graph()
+instance.parse(IN, format='n3')
+
+# extract mqttCommunicaiton information
+find_mqtt_requests = """SELECT ?d ?device ?mqtt_request ?name ?subscribe ?publish ?endpoint ?message
+       WHERE {
+            ?d a ?device_subclass.
+            ?device_subclass a owl:Class.
+            ?device_subclass rdfs:subClassOf wotdl:Device.
+            OPTIONAL{ ?d wotdl:name ?device }
+            ?mqtt_request a wotdl:MqttCommunication .
+            OPTIONAL{?mqtt_request wotdl:name ?name}
+            ?mqtt_request wotdl:subscribesTo ?subscribe .
+            ?mqtt_request wotdl:publishesOn ?publish .
+            ?mqtt_request wotdl:mqttEndpoint ?endpoint . 
+            OPTIONAL{?mqtt_request wotdl:mqttMessage ?message}
+            {
+                ?d wotdl:hasTransition ?t.
+                ?t wotdl:hasActuation ?mqtt_request.
+            } 
+            UNION 
+            { 
+                ?d wotdl:hasMeasurement ?mqtt_request.                          
+            }
+        }
+"""
+# store query findings in mqtt:requests
+mqtt_requests = instance.query(find_mqtt_requests, initNs={'wotdl': WOTDL, 'rdfs': RDFS, 'owl': OWL})
+#-----------------------------------------------------------------------------------------------------------------------
+
+
+#------------------------------------VARIABLES--------------------------------------------------------------------------
+# stores callback functions in connection to the mqttEndpoints
+registry = defaultdict(list)
+# mqttEndpoint variables for search and match options
+topic_variables = re.compile(r'{.+?}')
+# dict for storing ontology parameters
+parameter_registery = defaultdict(list)
+# handles various callbacks
+callback_names = defaultdict(list)
+#-----------------------------------------------------------------------------------------------------------------------
+
+#--------------------------------BUILD-PARAMETER-LIST-FROM-ONTOLOGY-INFORMATION-----------------------------------------
+for device, devicename, mqtt_request, name, subscribe, publish, endpoint, message in mqtt_requests:
+    print('%s %s %s %s %s %s %s' % (device, mqtt_request, name, subscribe, publish, endpoint, message))
+    parameter_registery[endpoint].append(
+        {'subscribesTo' : subscribe.lower(), 'publishesOn' : publish.lower(), 'device' : devicename, 'name' : name,
+         'message' : message})
+#-----------------------------------------------------------------------------------------------------------------------
+
+#ToDO: REMOVE TEST
+print('Parameter List for Channel Light: ' + str(parameter_registery['light']))
+
+#-----------------------SETTING-UP-THE-BROKER-BACKEND-------------------------------------------------------------------
 # initialize flask-mqtt
 app = Flask(__name__)
 
-# configurate MQTT-clients -> connect them to local broker
+# configurate MQTT-clients -> connect them to the local broker running at port 1883
 app.config['SECRET'] = 'my secret key'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['MQTT_BROKER_URL'] = 'localhost'
 app.config['MQTT_BROKER_PORT'] = 1883
-# default authenthication
+# default authenthication not enabled
 app.config['MQTT_USERNAME'] = ''
 app.config['MQTT_PASSWORD'] = ''
 # ping intervall
@@ -34,21 +98,14 @@ app.config['MQTT_TLS_ENABLED'] = False
 # app.config['MQTT_TLS_INSECURE'] = True
 # app.config['MQTT_TLS_CA_CERTS'] = 'ca.crt'
 
-# connect client to local broker
+# connect client to the local broker
 mqtt = Mqtt(app)
 
-# variables for collecting messages on events happening
-# socketIO for real time communication
+# socketIO extension for real time communication
 socketio = SocketIO(app)
-# for storing the topics : callbacks
-registry = defaultdict(list)
-# compile xml-styled input for match() and search() methods
-topic_variables = re.compile(r'{.+?}')
-# dict for storing parameters
-parameter_registery = defaultdict(list)
-# handle various callbacks
-callback_names = defaultdict(list)
+#-----------------------------------------------------------------------------------------------------------------------
 
+#-------------------------------------ADDITIONAL-FUNCTIONS--------------------------------------------------------------
 # build dict with kwargs
 def defaultArgs(default_kw):
     "decorator to assign default kwargs"
@@ -62,31 +119,62 @@ def defaultArgs(default_kw):
     return wrap
 
 # QoS dict
-defaults = {'zero':0, 'one':1, 'two':2}
+qos = {'zero':0, 'one':1, 'two':2}
 
 # callback: unzip & print kwargs when 'defaultArg()' is called with 'defaults' dict
-@defaultArgs(defaults)
+@defaultArgs(qos)
 def func(**kwargs):
     print (kwargs)  # args accessible via the kwargs dict
 
-# when client @subscribes smth, the topics automatically get integrated into reg
+# when client @subscribes smth, the topics automatically get integrated into registry
 def subscribe(topic):
     def decorator(func):
         # fill registry dict with sub-topic
         registry[topic].append(func)
         return func
-
     return decorator
+#-----------------------------------------------------------------------------------------------------------------------
 
-# when clients connects to server, let him subscribe to all topics
+#-----------------------SETTING-UP-THE-BROKER-BACKEND-------------------------------------------------------------------
+# initialize flask-mqtt
+app = Flask(__name__)
+
+# configurate MQTT-clients -> connect them to the local broker running at port 1883
+app.config['SECRET'] = 'my secret key'
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.config['MQTT_BROKER_URL'] = 'localhost'
+app.config['MQTT_BROKER_PORT'] = 1883
+# default authenthication not enabled
+app.config['MQTT_USERNAME'] = ''
+app.config['MQTT_PASSWORD'] = ''
+# ping intervall
+app.config['MQTT_KEEPALIVE'] = 5
+app.config['MQTT_TLS_ENABLED'] = False
+
+# Parameters for SSL enabled
+# app.config['MQTT_BROKER_PORT'] = 8883
+# app.config['MQTT_TLS_ENABLED'] = True
+# app.config['MQTT_TLS_INSECURE'] = True
+# app.config['MQTT_TLS_CA_CERTS'] = 'ca.crt'
+
+# connect client to the local broker
+mqtt = Mqtt(app)
+
+# socketIO extension for real time communication
+socketio = SocketIO(app)
+
+#-------------------------------CLIENT-CONNECTS-HANDLING----------------------------------------------------------------
+# when clients connects to server, identify device type(actuator/sensor)
+# -> actuator: subscribe to all endpoints that are related to the device itself (e.g lamp -> on/off/set functions)
 @mqtt.on_connect()
 def handle_connect(client, userdata, flags, rc):
     # ToDO: check for type of device (sensor/actuator) + check device category (light) and assign the correct subscription to
     subscribe_topics()
+#-----------------------------------------------------------------------------------------------------------------------
 
 
-
-#--------------------ACTUATION-CALLBACKS----------------------------
+#-------------------------------------------ACTUATION-CALLBACKS---------------------------------------------------------
+# if a client calls for one of the endpoints (@subscribe()), the callbacks invoke the requested function on the device
 # ToDO: generate this from the ontology, for every actuation that you find one of these blocks have to be put, in
 #  the blocks what is missing is the parameters: def invoke_implementation(function_name, params, kwargs, request, device),
 #  some are fixed like the device and some you get from the messages
@@ -95,17 +183,21 @@ def handle_connect(client, userdata, flags, rc):
 # phil hue on
 @subscribe('light/1/on')
 def callback1(message):
-    # ToDO: call switch_on_lamp
     print('Callback 1: ' + message)
+
     # ToDO: what is req, what is device?
-    invoke_implementation('switch_on_lamp', parameter_registery[message.topic], defaultArgs(defaults), request, device)
+    return hub.invoke_implementation()
+
+
+    #ToDO: def invoke_implementation(function_name, params, kwargs, request, device)
+    #invoke_implementation('switch_on_lamp', parameter_registery[message.topic], defaultArgs(defaults), request, device)
 
 # phil hue off
 @subscribe('light/1/off')
 def callback2(message):
     # ToDO: call switch_off_lamp
     print('Callback 2: ' + message)
-    invoke_implementation()
+    return hub.invoke_implementation()
 
 #------------------HEATING-ACTUATIONS----------------------------
 # heating relay off
@@ -113,21 +205,21 @@ def callback2(message):
 def callback3(message):
     # ToDO: heating_on in relay_heating
     print('Callback 3: ' + message)
-    invoke_implementation()
+    return hub.invoke_implementation()
 
 # heating relay off
 @subscribe('heating/2/off')
 def callback4(message):
     # ToDO: call heating_off in relay_heating
     print('Callback 4: ' + message)
-    invoke_implementation()
+    return hub.invoke_implementation()
 
 # set thermostat temp
 @subscribe('heating/2/setTemperature')
 def callback5(message):
     # ToDO: call thermostat_set in thermostat
     print('Callback 5: ' + message)
-    invoke_implementation()
+    return hub.invoke_implementation()
 
 #--------------FAN-ACTUATIONS----------------
 # turn fan off
@@ -135,26 +227,26 @@ def callback5(message):
 def callback6(message):
     # ToDO: call fan_turn_off in dc_motor_fan
     print('Callback 6: ' + message)
-    invoke_implementation()
+    return hub.invoke_implementation()
 
 @subscribe('fan/3/set')
 def callback7(message):
     # ToDO: call fan_set in dc_motor_fan
     print('Callback 7: ' + message)
-    invoke_implementation()
+    return hub.invoke_implementation()
 
 # speed up fan
 @subscribe('fan/3/increase')
 def callback8(message):
     # ToDO: call increase_fan_speed in dc_motor_fan
     print('Callback 8: ' + message)
-    invoke_implementation()
+    return hub.invoke_implementation()
 # speed down fan
 @subscribe('fan/3/decrease')
 def callback9(message):
     # ToDO: call decrease_fan_speed in dc_motor_fan
     print('Callback 9: ' + message)
-    invoke_implementation()
+    return hub.invoke_implementation()
 
 #--------------TV-ACTUATIONS----------------
 # tv on
@@ -162,14 +254,14 @@ def callback9(message):
 def callback10(message):
     # ToDO: call switch_on_tv in samsung_tv
     print('Callback 10: ' + message)
-    invoke_implementation()
+    return hub.invoke_implementation()
 
 #tv off
 @subscribe('tv/4/off')
 def callback11(message):
     # ToDO: call switch_ff_tv in samsung_tv
     print('Callback 11: ' + message)
-    invoke_implementation()
+    return hub.invoke_implementation()
 #-----------------------------------------------------------------
 
 
@@ -182,7 +274,8 @@ def callback11(message):
 #   function, call the function and pack the return value that you get from it to a somewhat meaningful message (could be the value).
 
 
-# handling an incomming message -> find callback for correct subscriber
+#---------------------------------------MESSAGE-HANDLING----------------------------------------------------------------
+# handling an incomming message -> find callback for corresponding topic
 @mqtt.on_message()
 def handle_mqtt_message(client, userdata, message):
     print("client reached")
@@ -192,8 +285,11 @@ def handle_mqtt_message(client, userdata, message):
     # address the input to the correct topic [], {}
     matching_keys, parameters = match_keys_and_parameters(topic)
     invoke_callbacks(matching_keys, parameters, payload)
+#-----------------------------------------------------------------------------------------------------------------------
 
-# topics and payloads get stored in coherance with each other
+
+#---------------------------------------HELP-FUNCTIONS------------------------------------------------------------------
+# connect each mqttmessage with its mqttendpoint
 def match_keys_and_parameters(topic):
     topic_reqexes = [(topic_variables.sub('(.+?)', key), key) for key in registry.keys()]
     matching_keys = []
@@ -211,60 +307,23 @@ def match_keys_and_parameters(topic):
             matching_keys.append(key)
     return matching_keys, parameters
 
-# match the payload to the topic of the req with the callback
+# activate the callback function that is able to invoke the requested function based on the requested endpoint
 def invoke_callbacks(matching_keys, parameters, payload):
     for topic in matching_keys:
         for callback in registry[topic]:
             callback(payload, **parameters)
 
+# ToDO: modify for actuations
 # loop through the reg.keys(topics) of the dict that matches the topic (compiled) which should be subscribed
 def subscribe_topics():
     for topic in registry.keys():
         mqtt.subscribe(topic_variables.sub('+', topic))
-
-
-
-# witin callbacks, call the corresponding device function according to the channel
-IMPLEMENTATION_PATH = 'wot_api.models'
-print('hub imported')
-
-PERSISTENCE = {}
-INIT_FUNCTION_NAME = 'init'
-
-# ToDO: Call the device hub with implementations
-def invoke_implementation(function_name, params, kwargs, request, device):
-    import_path = IMPLEMENTATION_PATH + '.' + device
-    implementation_spec = importlib.util.find_spec(import_path)
-    found = implementation_spec is not None
-    #look for implementation
-    if found:
-        implementation = importlib.import_module(import_path)
-        if hasattr(implementation, INIT_FUNCTION_NAME):
-            plugin_init_function = getattr(implementation, INIT_FUNCTION_NAME)
-            plugin_init_function()
-        if not hasattr(implementation, function_name):
-            return 'Implementation required for %s of device %s' % (function_name, device)
-        method = getattr(implementation, function_name)
-
-        if 'body' in kwargs:
-            body = kwargs['body']
-            for param in params:
-                if param not in kwargs:
-                    kwargs[param] = body[param]
-            kwargs.pop('body')
-
-        if len(kwargs) > 0:
-            return method(**kwargs)
-        else:
-            return method()
-    else:
-        return 'Implementation required for device %s' % device
+#-----------------------------------------------------------------------------------------------------------------------
 
 
 # @mqtt.on_log()
 # def handle_logging(client, userdata, level, buf):
 #     print(level, buf)
-
 
 if __name__ == '__main__':
     # important: Do not use reloader because this will create two Flask instances.
