@@ -8,7 +8,7 @@ PERSISTENCE = {}
 INIT_FUNCTION_NAME = 'init'
 
 
-def invoke_implementation(function_name, params, kwargs, request, device):
+def invoke_implementation(function_name, params, kwargs, device):
     import_path = IMPLEMENTATION_PATH + '.' + device
 
     implementation_spec = importlib.util.find_spec(import_path)
