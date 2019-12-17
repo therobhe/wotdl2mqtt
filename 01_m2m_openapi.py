@@ -6,7 +6,7 @@ from rdflib import OWL, RDFS, Namespace
 from urllib.parse import urlparse
 from collections import defaultdict
 
-IN = 'icwe2019.ttl'
+IN = 'sample.ttl'
 WOTDL = Namespace('http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#')
 
 instance = rdflib.Graph()
