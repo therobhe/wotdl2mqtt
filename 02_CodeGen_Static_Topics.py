@@ -190,24 +190,21 @@ def handle_connect(client, userdata, flags, rc):
                         subscribe_heat()
                     if((str(dev) == 'philipshue') and (cmp == endpoint)):
                         subscribe_light()
+    #subscribe()
 #-----------------------------------------------------------------------------------------------------------------------
 
 
 #-------------------------------------------ACTUATION-CALLBACKS---------------------------------------------------------
 # if a client calls for one of the endpoints (@subscribe()), the callbacks invoke the a function that searches for
 # implementations on the device repository
-# ToDO: generate this from the ontology, for every actuation that you find one of these blocks have to be put, in
-#  the blocks what is missing is the parameters: def invoke_implementation(function_name, params, kwargs, request, device),
-#  some are fixed like the device and some you get from the messages
-
 #------------------LIGHT-ACTUATIONS----------------------------
 # phil hue on -> hub needs to call switch_lamp_on() in philipshue.py
 @subscribe('light/1/on')
 def callback1(message):
-    print('Callback 1: ' + message) #todo remove
+    print('Callback 1: ' + message)
     for param in parameter_registery['light/1/on']:
         devname = param[device]
-        print(str(devname)) #todo remove
+    # ToDO: is that style correct? def invoke_implementation(function_name, params, kwargs, device)
     return hub.invoke_implementation('switch_lamp_on', parameter_registery['light/1/on'], defaultArgs(qos), devname)
 
 # phil hue off -> hub needs to call switch_lamp_off() in philipshue.py
@@ -409,6 +406,10 @@ def subscribe_tv():
     mqtt.subscribe('tv/4/off')
 #-----------------------------------------------------------------------------------------------------------------------
 
+
+#def subscribe():
+#    for topic in registry.keys():
+#        mqtt.subscribe(topic_variables.sub('+', topic))
 
 # @mqtt.on_log()
 # def handle_logging(client, userdata, level, buf):
