@@ -21,7 +21,7 @@ pip install -r requirements.txt
 Adapt the IN variable to point to your ontology instance and run the model-to-model transformation:
 
 ```
-python 01_m2m_asyncapi.py
+01_m2m_asyncapi.py
 ```
 
 Run the model-to-text generation:
