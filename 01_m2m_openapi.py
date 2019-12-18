@@ -46,6 +46,7 @@ for device, devicename, http_request, name, method, url, body in http_requests:
     resources[url.path].append(
         {'method': method.lower(), 'device': devicename, 'name': name, 'query_params': url.query, 'body': body})
 
+
 for resource in resources:
     path_params = [p for p in resource.split('/')[1:] if p[0] == '{' and p[-1] == '}']
     requests = resources[resource]

@@ -55,26 +55,26 @@ mqtt_requests = instance.query(find_mqtt_requests, initNs={'wotdl': WOTDL, 'rdfs
 
 
 #------------------------------------VARIABLES--------------------------------------------------------------------------
-# stores callback functions in connection to the mqttEndpoints
+# stores callback functions in connection to the mqttEndpoints (endpoint:callback)
 registry = defaultdict(list)
-# mqttEndpoint variables for search and match options
+# mqttEndpoints with variable path-parts ({id}) get replaced by easy wildcard (+)
 topic_variables = re.compile(r'{.+?}')
 # dict for storing ontology parameters
 parameter_registery = defaultdict(list)
-# handles various callbacks
-callback_names = defaultdict(list)
 #-----------------------------------------------------------------------------------------------------------------------
 
 #--------------------------------BUILD-PARAMETER-LIST-FROM-ONTOLOGY-INFORMATION-----------------------------------------
+# connect endpoint : device parameter -> param_registery
 for device, devicename, mqtt_request, name, subscribe, publish, endpoint, message in mqtt_requests:
-    print('%s %s %s %s %s %s %s' % (device, mqtt_request, name, subscribe, publish, endpoint, message))
+    print('%s %s %s %s %s %s' % (device, mqtt_request, name, subscribe, publish, endpoint, message))
+    # add parameter to endpoint
     parameter_registery[endpoint].append(
         {'subscribesTo' : subscribe.lower(), 'publishesOn' : publish.lower(), 'device' : devicename, 'name' : name,
          'message' : message})
 #-----------------------------------------------------------------------------------------------------------------------
 
-#ToDO: REMOVE TEST
-print('Parameter List for Channel Light: ' + str(parameter_registery['light']))
+#ToDO: REMOVE NL
+print('Parameter List for Channel Light: ' + str(parameter_registery['light/1/on']))
 
 #-----------------------SETTING-UP-THE-BROKER-BACKEND-------------------------------------------------------------------
 # initialize flask-mqtt
@@ -126,7 +126,7 @@ qos = {'zero':0, 'one':1, 'two':2}
 def func(**kwargs):
     print (kwargs)  # args accessible via the kwargs dict
 
-# when client @subscribes smth, the topics automatically get integrated into registry
+# when client @subscribes something, the endpoints automatically stored in registry
 def subscribe(topic):
     def decorator(func):
         # fill registry dict with sub-topic
@@ -135,7 +135,7 @@ def subscribe(topic):
     return decorator
 #-----------------------------------------------------------------------------------------------------------------------
 
-#-----------------------SETTING-UP-THE-BROKER-BACKEND-------------------------------------------------------------------
+#-----------------------------------SETTING-UP-THE-BROKER-BACKEND-------------------------------------------------------
 # initialize flask-mqtt
 app = Flask(__name__)
 
@@ -160,118 +160,194 @@ app.config['MQTT_TLS_ENABLED'] = False
 # connect client to the local broker
 mqtt = Mqtt(app)
 
+# initialize flask-mqtt
+app = Flask(__name__)
+
 # socketIO extension for real time communication
 socketio = SocketIO(app)
 
 #-------------------------------CLIENT-CONNECTS-HANDLING----------------------------------------------------------------
 # when clients connects to server, identify device type(actuator/sensor)
-# -> actuator: subscribe to all endpoints that are related to the device itself (e.g lamp -> on/off/set functions)
+# -> actuators: subscribe to all endpoints that are related to the device itself (e.g lamp -> on/off/set functions)
 @mqtt.on_connect()
 def handle_connect(client, userdata, flags, rc):
-    # ToDO: check for type of device (sensor/actuator) + check device category (light) and assign the correct subscription to
-    subscribe_topics()
+    # check if connecting device is actuator -> yes? check what device type (tv, lamp...) it is and let it subscribe to
+    # corresponding functions
+    # therefore: actuators 'subscribesTo' values matches the endpoint, otherwise it is a sensor(no subscribesTo)
+    # cmp for actuator check, dev as param for checking which device is active
+    for endpoint in parameter_registery:                #endpoint:[{object}]
+        for object in parameter_registery[endpoint]:    #object:{key1:param1, key2:param2...}
+            for param in object:                        #key:param
+                if(str(param) == 'subscribesTo'):
+                    cmp = object[param]
+                if (str(param) == 'device'):
+                    dev = object[param]
+                    if((str(dev) == 'samsung_tv') and (cmp == endpoint)):
+                        subscribe_tv()
+                    if((str(dev) == 'dc_motor_fan') and (cmp == endpoint)):
+                        subscribe_fan()
+                    if((str(dev) == 'relay_heating') and (cmp == endpoint)):
+                        subscribe_heat()
+                    if((str(dev) == 'philipshue') and (cmp == endpoint)):
+                        subscribe_light()
 #-----------------------------------------------------------------------------------------------------------------------
 
 
 #-------------------------------------------ACTUATION-CALLBACKS---------------------------------------------------------
-# if a client calls for one of the endpoints (@subscribe()), the callbacks invoke the requested function on the device
+# if a client calls for one of the endpoints (@subscribe()), the callbacks invoke the a function that searches for
+# implementations on the device repository
 # ToDO: generate this from the ontology, for every actuation that you find one of these blocks have to be put, in
 #  the blocks what is missing is the parameters: def invoke_implementation(function_name, params, kwargs, request, device),
 #  some are fixed like the device and some you get from the messages
 
 #------------------LIGHT-ACTUATIONS----------------------------
-# phil hue on
+# phil hue on -> hub needs to call switch_lamp_on() in philipshue.py
 @subscribe('light/1/on')
 def callback1(message):
-    print('Callback 1: ' + message)
+    print('Callback 1: ' + message) #todo remove
+    for param in parameter_registery['light/1/on']:
+        devname = param[device]
+        print(str(devname)) #todo remove
+    return hub.invoke_implementation('switch_lamp_on', parameter_registery['light/1/on'], defaultArgs(qos), devname)
 
-    # ToDO: what is req, what is device?
-    return hub.invoke_implementation()
-
-
-    #ToDO: def invoke_implementation(function_name, params, kwargs, request, device)
-    #invoke_implementation('switch_on_lamp', parameter_registery[message.topic], defaultArgs(defaults), request, device)
-
-# phil hue off
+# phil hue off -> hub needs to call switch_lamp_off() in philipshue.py
 @subscribe('light/1/off')
 def callback2(message):
     # ToDO: call switch_off_lamp
     print('Callback 2: ' + message)
-    return hub.invoke_implementation()
+    for param in parameter_registery['light/1/off']:
+        devname = param[device]
+    return hub.invoke_implementation('switch_lamp_off', parameter_registery['light/1/off'], defaultArgs(qos), devname)
 
 #------------------HEATING-ACTUATIONS----------------------------
-# heating relay off
+# heating relay on -> hub needs to call heating_on() in heating_relay.py
 @subscribe('heating/2/on')
 def callback3(message):
     # ToDO: heating_on in relay_heating
     print('Callback 3: ' + message)
-    return hub.invoke_implementation()
+    for param in parameter_registery['heating/2/on']:
+        devname = param[device]
+    return hub.invoke_implementation('heating_on', parameter_registery['heating/2/on'], defaultArgs(qos), devname)
 
-# heating relay off
+# heating relay off -> hub needs to call heating_off() in heating_relay.py
 @subscribe('heating/2/off')
 def callback4(message):
     # ToDO: call heating_off in relay_heating
     print('Callback 4: ' + message)
-    return hub.invoke_implementation()
+    for param in parameter_registery['heating/2/off']:
+        devname = param[device]
+    return hub.invoke_implementation('heating_off', parameter_registery['heating/2/off'], defaultArgs(qos), devname)
 
-# set thermostat temp
+# set thermostat temp -> hub needs to call thermostat_set(target_temp) in thermostat.py
 @subscribe('heating/2/setTemperature')
 def callback5(message):
     # ToDO: call thermostat_set in thermostat
     print('Callback 5: ' + message)
-    return hub.invoke_implementation()
+    for param in parameter_registery['heating/2/setTemperature']:
+        devname = param[device]
+    return hub.invoke_implementation('thermostat_set', parameter_registery['heating/2/setTemperature'], defaultArgs(qos), devname)
 
 #--------------FAN-ACTUATIONS----------------
-# turn fan off
+# turn fan off -> hub needs to call fan_turn_off in dc_motor_fan.py
 @subscribe('fan/3/off')
 def callback6(message):
-    # ToDO: call fan_turn_off in dc_motor_fan
     print('Callback 6: ' + message)
-    return hub.invoke_implementation()
+    for param in parameter_registery['fan/3/off']:
+        devname = param[device]
+    return hub.invoke_implementation('fan_turn_off', parameter_registery['fan/3/off'], defaultArgs(qos), devname)
 
+# set speed -> hub needs to call fan_set(body) in dc_motor_fan.py
 @subscribe('fan/3/set')
 def callback7(message):
-    # ToDO: call fan_set in dc_motor_fan
     print('Callback 7: ' + message)
-    return hub.invoke_implementation()
+    for param in parameter_registery['fan/3/set']:
+        devname = param[device]
+    return hub.invoke_implementation('fan_set', parameter_registery['fan/3/set'], defaultArgs(qos), devname)
 
-# speed up fan
+# speed up -> hub needs to call increase_fan_speed() in dc_motor_fan.py
 @subscribe('fan/3/increase')
 def callback8(message):
-    # ToDO: call increase_fan_speed in dc_motor_fan
     print('Callback 8: ' + message)
-    return hub.invoke_implementation()
-# speed down fan
+    for param in parameter_registery['fan/3/increase']:
+        devname = param[device]
+    return hub.invoke_implementation('increase_fan_speed', parameter_registery['fan/3/increase'], defaultArgs(qos), devname)
+
+# slow down fan -> hub needs to call decrease_fan_speed() in dc_motor_fan.py
 @subscribe('fan/3/decrease')
 def callback9(message):
-    # ToDO: call decrease_fan_speed in dc_motor_fan
     print('Callback 9: ' + message)
-    return hub.invoke_implementation()
+    for param in parameter_registery['fan/3/decrease']:
+        devname = param[device]
+    return hub.invoke_implementation('decrease_fan_speed', parameter_registery['fan/3/decrease'], defaultArgs(qos), devname)
 
 #--------------TV-ACTUATIONS----------------
-# tv on
+# tv on -> hub needs to call switch_on_tv() in samsung_tv.py
 @subscribe('tv/4/on')
 def callback10(message):
-    # ToDO: call switch_on_tv in samsung_tv
     print('Callback 10: ' + message)
-    return hub.invoke_implementation()
+    for param in parameter_registery['tv/4/on']:
+        devname = param[device]
+    return hub.invoke_implementation('switch_tv_on', parameter_registery['tv/4/on'], defaultArgs(qos), devname)
 
-#tv off
+# tv off -> hub needs to call switch_off_tv() in samsung_tv.py
 @subscribe('tv/4/off')
 def callback11(message):
-    # ToDO: call switch_ff_tv in samsung_tv
     print('Callback 11: ' + message)
-    return hub.invoke_implementation()
+    for param in parameter_registery['tv/4/off']:
+        devname = param[device]
+    return hub.invoke_implementation('switch_tv_off', parameter_registery['tv/4/off'], defaultArgs(qos), devname)
 #-----------------------------------------------------------------
 
 
-#-----------------SENSOR-CALLBACKS-------------------------------
-#  ToDO: for the publish side you need to iterate over all the Measurements in the ontology and extract all the
-#   information about it, like the sensors,... and then do an infite loop that needs to periodically call the device
+#------------------------------------------SENSOR-CALLBACKS-------------------------------------------------------------
+#  ToDO:
+#   1- for the publish side you need to iterate over all the Measurements in the ontology and extract all the
+#   information about it, like the sensors,...
+#   2- then do an infinite loop that needs to periodically call the device
 #   implementations of each sensor (give me your data) and publish the value on the channel that is in the instance of
 #   the ontology to the MQTT broker, the interval has to be configurable (1 second for a start should be enough).
 #   You need to take care of loading the module (the device implementation) then look into it for the corresponding
-#   function, call the function and pack the return value that you get from it to a somewhat meaningful message (could be the value).
+#   function
+#   3- this calls the function and pack the return value that you get from it to a somewhat meaningful message (could be the value).
+
+#---------------EXTRACT-SENSOR-INFORMATION-FROM-ONTOLOGY------------------------
+#search in mqtt_requests
+#-------------------------------------------------------------------------------
+
+#PERIODICALLY-CALL-THE-getValue()-FUNCTIONS-&-PUBLISH-THE-RESPONSE-TO-SUBSCRIBERS
+ #infinite loop through mqtt_request{
+ #   each 1s call:
+ #       if devicename == 'http://vsr.informatik.tu-chemnitz.de/projects/growth/samples/icwe2019#LightM':
+ #           answer = hub.invoke_implementation('get_light_instensity', parameter_registery['light'], defaultArgs(qos), device)
+ #           mqtt.publish('light', answer)
+
+ #       if devicename == 'http://vsr.informatik.tu-chemnitz.de/projects/growth/samples/icwe2019#HumidityM':
+ #           answer = hub.invoke_implementation('get_humidity', parameter_registery['humidity'], defaultArgs(qos), device)
+ #           mqtt.publish('humidity', answer)
+
+ #       if devicename == 'http://vsr.informatik.tu-chemnitz.de/projects/growth/samples/icwe2019#TemperatureM':
+ #           answer = hub.invoke_implementation('get_humidity', parameter_registery['temperature'], defaultArgs(qos), device)
+ #           mqtt.publish('temperature', answer)
+#}
+#----------------------------------------------------------------------------------
+
+#----------------------------SHOW-THE-CURRENT-SENSOR-VALUE-------------------------
+@subscribe('light')
+def callback11(message):
+    light = message
+    print('light measurement proceeded!\ncurrent luminosity: ' + str(light) + 'lumen')
+
+@subscribe('temperature')
+def callback12(message):
+    temperature = message
+    print('temperature measurement proceeded!\ncurrent temperature: ' + str(temperature) + '° celsius')
+
+@subscribe('humidity')
+def callback13(message):
+    humidity = message
+    print('humidity measurement proceeded!\ncurrent humidity level: ' + str(humidity) + '%')
+# ------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------------------------
 
 
 #---------------------------------------MESSAGE-HANDLING----------------------------------------------------------------
@@ -288,7 +364,7 @@ def handle_mqtt_message(client, userdata, message):
 #-----------------------------------------------------------------------------------------------------------------------
 
 
-#---------------------------------------HELP-FUNCTIONS------------------------------------------------------------------
+#---------------------------------------HELPER-FUNCTIONS------------------------------------------------------------------
 # connect each mqttmessage with its mqttendpoint
 def match_keys_and_parameters(topic):
     topic_reqexes = [(topic_variables.sub('(.+?)', key), key) for key in registry.keys()]
@@ -313,11 +389,24 @@ def invoke_callbacks(matching_keys, parameters, payload):
         for callback in registry[topic]:
             callback(payload, **parameters)
 
-# ToDO: modify for actuations
-# loop through the reg.keys(topics) of the dict that matches the topic (compiled) which should be subscribed
-def subscribe_topics():
-    for topic in registry.keys():
-        mqtt.subscribe(topic_variables.sub('+', topic))
+def subscribe_light():
+    mqtt.subscribe('light/1/on')
+    mqtt.subscribe('light/1/off')
+
+def subscribe_fan():
+    mqtt.subscribe('heating/2/on')
+    mqtt.subscribe('heating/2/off')
+    mqtt.subscribe('heating/2/setTemperature')
+
+def subscribe_heat():
+    mqtt.subscribe('fan/3/set')
+    mqtt.subscribe('fan/3/off')
+    mqtt.subscribe('fan/3/increase')
+    mqtt.subscribe('fan/3/decrease')
+
+def subscribe_tv():
+    mqtt.subscribe('tv/4/on')
+    mqtt.subscribe('tv/4/off')
 #-----------------------------------------------------------------------------------------------------------------------
 
 
