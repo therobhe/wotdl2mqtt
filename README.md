@@ -18,10 +18,10 @@ Get the dependencies:
 pip install -r requirements.txt
 ```
 
-Adapt the IN variable to point to your ontology instance and run the model-to-model transformation:
+Adapt the IN variable within the following file to point to your ontology instance and run the model-to-model transformation:
 
 ```
-01_m2m_asyncapi.py
+python 01_m2m_asyncapi.py
 ```
 
 Run the model-to-text generation:
