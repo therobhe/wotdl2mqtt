@@ -41,7 +41,7 @@ http_requests = instance.query(find_http_requests, initNs={'wotdl': WOTDL, 'rdfs
 resources = defaultdict(list)
 
 for device, devicename, http_request, name, method, url, body in http_requests:
-    print('%s Devname: %s %s %s %s %s' % (device, http_request, name, method, url, body))
+    print('%s %s %s %s %s %s' % (device, http_request, name, method, url, body))
     url = urlparse(url)
     resources[url.path].append(
         {'method': method.lower(), 'device': devicename, 'name': name, 'query_params': url.query, 'body': body})
