@@ -897,7 +897,6 @@ payload:
   wotdl:hasActuation <#HeatingOff>;
   wotdl:hasEffect <#DecreaseTemperature>, <#HeatingOffEffect>.
 
-
 <#HeatingOffPrecondition>
   a wotdl:PreCondition ;
   wotdl:on <#HeatingPowerState> ;
