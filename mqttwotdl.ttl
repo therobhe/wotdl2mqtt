@@ -902,6 +902,7 @@ payload:
   wotdl:on <#HeatingPowerState> ;
   wotdl:value "on"^^xsd:string .
 
+
 <#HeatingOff>
   a wotdl:HttpRequest, wotdl:MqttCommunication, wotdl:Actuation ;
   wotdl:httpMethod "POST"^^xsd:string ;
