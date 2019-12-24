@@ -49,7 +49,7 @@ find_mqtt_requests = """SELECT ?d ?device ?mqtt_request ?name ?subscribe ?publis
             }
         }
 """
-# store query findings in mqtt:requests
+# store query findings in mqtt_requests
 mqtt_requests = instance.query(find_mqtt_requests, initNs={'wotdl': WOTDL, 'rdfs': RDFS, 'owl': OWL})
 #-----------------------------------------------------------------------------------------------------------------------
 
@@ -135,37 +135,6 @@ def subscribe(topic):
     return decorator
 #-----------------------------------------------------------------------------------------------------------------------
 
-#-----------------------------------SETTING-UP-THE-BROKER-BACKEND-------------------------------------------------------
-# initialize flask-mqtt
-app = Flask(__name__)
-
-# configurate MQTT-clients -> connect them to the local broker running at port 1883
-app.config['SECRET'] = 'my secret key'
-app.config['TEMPLATES_AUTO_RELOAD'] = True
-app.config['MQTT_BROKER_URL'] = 'localhost'
-app.config['MQTT_BROKER_PORT'] = 1883
-# default authenthication not enabled
-app.config['MQTT_USERNAME'] = ''
-app.config['MQTT_PASSWORD'] = ''
-# ping intervall
-app.config['MQTT_KEEPALIVE'] = 5
-app.config['MQTT_TLS_ENABLED'] = False
-
-# Parameters for SSL enabled
-# app.config['MQTT_BROKER_PORT'] = 8883
-# app.config['MQTT_TLS_ENABLED'] = True
-# app.config['MQTT_TLS_INSECURE'] = True
-# app.config['MQTT_TLS_CA_CERTS'] = 'ca.crt'
-
-# connect client to the local broker
-mqtt = Mqtt(app)
-
-# initialize flask-mqtt
-app = Flask(__name__)
-
-# socketIO extension for real time communication
-socketio = SocketIO(app)
-
 #-------------------------------CLIENT-CONNECTS-HANDLING----------------------------------------------------------------
 # when clients connects to server, identify device type(actuator/sensor)
 # -> actuators: subscribe to all endpoints that are related to the device itself (e.g lamp -> on/off/set functions)
@@ -235,44 +204,35 @@ def callback4(message):
         devname = param[device]
     return hub.invoke_implementation('heating_off', parameter_registery['heating/2/off'], defaultArgs(qos), devname)
 
-# set thermostat temp -> hub needs to call thermostat_set(target_temp) in thermostat.py
-@subscribe('heating/2/setTemperature')
-def callback5(message):
-    # ToDO: call thermostat_set in thermostat
-    print('Callback 5: ' + message)
-    for param in parameter_registery['heating/2/setTemperature']:
-        devname = param[device]
-    return hub.invoke_implementation('thermostat_set', parameter_registery['heating/2/setTemperature'], defaultArgs(qos), devname)
-
 #--------------FAN-ACTUATIONS----------------
 # turn fan off -> hub needs to call fan_turn_off in dc_motor_fan.py
 @subscribe('fan/3/off')
-def callback6(message):
-    print('Callback 6: ' + message)
+def callback5(message):
+    print('Callback 5: ' + message)
     for param in parameter_registery['fan/3/off']:
         devname = param[device]
     return hub.invoke_implementation('fan_turn_off', parameter_registery['fan/3/off'], defaultArgs(qos), devname)
 
 # set speed -> hub needs to call fan_set(body) in dc_motor_fan.py
 @subscribe('fan/3/set')
-def callback7(message):
-    print('Callback 7: ' + message)
+def callback6(message):
+    print('Callback 6: ' + message)
     for param in parameter_registery['fan/3/set']:
         devname = param[device]
     return hub.invoke_implementation('fan_set', parameter_registery['fan/3/set'], defaultArgs(qos), devname)
 
 # speed up -> hub needs to call increase_fan_speed() in dc_motor_fan.py
 @subscribe('fan/3/increase')
-def callback8(message):
-    print('Callback 8: ' + message)
+def callback7(message):
+    print('Callback 7: ' + message)
     for param in parameter_registery['fan/3/increase']:
         devname = param[device]
     return hub.invoke_implementation('increase_fan_speed', parameter_registery['fan/3/increase'], defaultArgs(qos), devname)
 
 # slow down fan -> hub needs to call decrease_fan_speed() in dc_motor_fan.py
 @subscribe('fan/3/decrease')
-def callback9(message):
-    print('Callback 9: ' + message)
+def callback8(message):
+    print('Callback 8: ' + message)
     for param in parameter_registery['fan/3/decrease']:
         devname = param[device]
     return hub.invoke_implementation('decrease_fan_speed', parameter_registery['fan/3/decrease'], defaultArgs(qos), devname)
@@ -280,20 +240,32 @@ def callback9(message):
 #--------------TV-ACTUATIONS----------------
 # tv on -> hub needs to call switch_on_tv() in samsung_tv.py
 @subscribe('tv/4/on')
-def callback10(message):
-    print('Callback 10: ' + message)
+def callback9(message):
+    print('Callback 9: ' + message)
     for param in parameter_registery['tv/4/on']:
         devname = param[device]
     return hub.invoke_implementation('switch_tv_on', parameter_registery['tv/4/on'], defaultArgs(qos), devname)
 
 # tv off -> hub needs to call switch_off_tv() in samsung_tv.py
 @subscribe('tv/4/off')
-def callback11(message):
-    print('Callback 11: ' + message)
+def callback10(message):
+    print('Callback 10: ' + message)
     for param in parameter_registery['tv/4/off']:
         devname = param[device]
     return hub.invoke_implementation('switch_tv_off', parameter_registery['tv/4/off'], defaultArgs(qos), devname)
 #-----------------------------------------------------------------
+
+#--------------THERMOSTAT-ACTUATIONS------------------------------
+# set thermostat temp -> hub needs to call thermostat_set(target_temp) in thermostat.py
+@subscribe('thermostat/5/setTemperature')
+def callback11(message):
+    # ToDO: call thermostat_set in thermostat
+    print('Callback 11: ' + message)
+    for param in parameter_registery['thermostat/5/setTemperature']:
+        devname = param[device]
+    return hub.invoke_implementation('thermostat_set', parameter_registery['heating/2/setTemperature'], defaultArgs(qos), devname)
+#-----------------------------------------------------------------
+
 
 
 #------------------------------------------SENSOR-CALLBACKS-------------------------------------------------------------
@@ -308,7 +280,7 @@ def callback11(message):
 #   3- this calls the function and pack the return value that you get from it to a somewhat meaningful message (could be the value).
 
 #---------------EXTRACT-SENSOR-INFORMATION-FROM-ONTOLOGY------------------------
-#search in mqtt_requests
+#search in mqtt_requests for values to invoke implementation
 #-------------------------------------------------------------------------------
 
 #PERIODICALLY-CALL-THE-getValue()-FUNCTIONS-&-PUBLISH-THE-RESPONSE-TO-SUBSCRIBERS
@@ -330,17 +302,17 @@ def callback11(message):
 
 #----------------------------SHOW-THE-CURRENT-SENSOR-VALUE-------------------------
 @subscribe('light')
-def callback11(message):
+def callback12(message):
     light = message
     print('light measurement proceeded!\ncurrent luminosity: ' + str(light) + 'lumen')
 
 @subscribe('temperature')
-def callback12(message):
+def callback13(message):
     temperature = message
     print('temperature measurement proceeded!\ncurrent temperature: ' + str(temperature) + '° celsius')
 
 @subscribe('humidity')
-def callback13(message):
+def callback14(message):
     humidity = message
     print('humidity measurement proceeded!\ncurrent humidity level: ' + str(humidity) + '%')
 # ------------------------------------------------------------------------------------
@@ -355,7 +327,7 @@ def handle_mqtt_message(client, userdata, message):
     topic = message.topic
     payload = message.payload.decode()
     print(f'handle mqtt message on channel {topic}')
-    # address the input to the correct topic [], {}
+    # address the mqtt.publish input to the corresponding api-specification
     matching_keys, parameters = match_keys_and_parameters(topic)
     invoke_callbacks(matching_keys, parameters, payload)
 #-----------------------------------------------------------------------------------------------------------------------
