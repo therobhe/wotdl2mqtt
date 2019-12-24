@@ -16,13 +16,14 @@ instance.parse(IN, format='n3')
 
 
 # extract mqttCommunicaiton information
-find_mqtt_requests = """SELECT ?d ?device ?mqtt_request ?name ?message ?endpoint
+find_mqtt_requests = """SELECT ?d ?device ?mqtt_request ?name ?message ?endpoint ?sub
        WHERE {
             ?d a ?device_subclass.
             ?device_subclass a owl:Class.
             ?device_subclass rdfs:subClassOf wotdl:Device.
             OPTIONAL{ ?d wotdl:name ?device }
             ?mqtt_request a wotdl:MqttCommunication .
+            ?mqtt_request wotdl:subscribesTo ?sub
             OPTIONAL{?mqtt_request wotdl:name ?name}
             ?mqtt_request wotdl:mqttMessage ?message . 
             ?mqtt_request wotdl:mqttEndpoint ?endpoint
@@ -46,8 +47,8 @@ mqtt_requests = instance.query(find_mqtt_requests, initNs={'wotdl': WOTDL, 'rdfs
 resources = defaultdict(list)
 
 # fill resource dict
-for device, devicename, mqtt_request, name, message, endpoint in mqtt_requests:
-    print('%s %s %s %s %s' % (device, mqtt_request, name,  message, endpoint))
+for device, devicename, mqtt_request, name, message, endpoint, sub in mqtt_requests:
+    print('Device: %s MQTTReq: %s FName: %s Message: %s Endpoint: %s SubcribesTo: %s' % (device, mqtt_request, name,  message, endpoint, sub))
 #    resources[endpoint].append(
 #        {'subscribesTo' : subscribe.lower(), 'publishesOn' : publish.lower(), 'device' : devicename, 'name' : name,
 #         'message' : message})
