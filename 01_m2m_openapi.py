@@ -6,7 +6,7 @@ from rdflib import OWL, RDFS, Namespace
 from urllib.parse import urlparse
 from collections import defaultdict
 
-IN = 'sample.ttl'
+IN = 'mqttwotdl.ttl'
 WOTDL = Namespace('http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#')
 
 instance = rdflib.Graph()
@@ -45,7 +45,6 @@ for device, devicename, http_request, name, method, url, body in http_requests:
     url = urlparse(url)
     resources[url.path].append(
         {'method': method.lower(), 'device': devicename, 'name': name, 'query_params': url.query, 'body': body})
-
 
 for resource in resources:
     path_params = [p for p in resource.split('/')[1:] if p[0] == '{' and p[-1] == '}']

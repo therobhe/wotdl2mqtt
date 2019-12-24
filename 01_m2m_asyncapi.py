@@ -3,9 +3,7 @@ import yaml
 import json
 import fileinput
 
-from Tools.scripts.make_ctype import method
 from rdflib import OWL, RDFS, Namespace
-from urllib.parse import urlparse
 from collections import defaultdict
 
 # Import MQTT_Ontology
@@ -15,8 +13,10 @@ WOTDL = Namespace('http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wot
 instance = rdflib.Graph()
 instance.parse(IN, format='n3')
 
+
+
 # extract mqttCommunicaiton information
-find_mqtt_requests = """SELECT ?d ?device ?mqtt_request ?name ?subscribe ?publish ?endpoint ?message
+find_mqtt_requests = """SELECT ?d ?device ?mqtt_request ?name ?message ?endpoint
        WHERE {
             ?d a ?device_subclass.
             ?device_subclass a owl:Class.
@@ -24,17 +24,16 @@ find_mqtt_requests = """SELECT ?d ?device ?mqtt_request ?name ?subscribe ?publis
             OPTIONAL{ ?d wotdl:name ?device }
             ?mqtt_request a wotdl:MqttCommunication .
             OPTIONAL{?mqtt_request wotdl:name ?name}
-            ?mqtt_request wotdl:subscribesTo ?subscribe .
-            ?mqtt_request wotdl:publishesOn ?publish .
-            ?mqtt_request wotdl:mqttEndpoint ?endpoint . 
+            ?mqtt_request wotdl:mqttMessage ?message . 
+            ?mqtt_request wotdl:mqttEndpoint ?endpoint
             OPTIONAL{?mqtt_request wotdl:mqttMessage ?message}
             {
                 ?d wotdl:hasTransition ?t.
                 ?t wotdl:hasActuation ?mqtt_request.
             } 
-            UNION 
-            { 
-                ?d wotdl:hasMeasurement ?mqtt_request.                          
+            UNION
+            {
+                ?d wotdl:hasMeasurement ?mqtt_request.    
             }
         }
 """
@@ -47,11 +46,14 @@ mqtt_requests = instance.query(find_mqtt_requests, initNs={'wotdl': WOTDL, 'rdfs
 resources = defaultdict(list)
 
 # fill resource dict
-for device, devicename, mqtt_request, name, subscribe, publish, endpoint, message in mqtt_requests:
-    print('%s %s %s %s %s %s %s' % (device, mqtt_request, name, subscribe, publish, endpoint, message))
-    resources[endpoint].append(
-        {'subscribesTo' : subscribe.lower(), 'publishesOn' : publish.lower(), 'device' : devicename, 'name' : name,
-         'message' : message})
+for device, devicename, mqtt_request, name, message, endpoint in mqtt_requests:
+    print('%s %s %s %s %s' % (device, mqtt_request, name,  message, endpoint))
+#    resources[endpoint].append(
+#        {'subscribesTo' : subscribe.lower(), 'publishesOn' : publish.lower(), 'device' : devicename, 'name' : name,
+#         'message' : message})
+#    print('PARAMETERS FOR TEMPERATURE: ' + resources['temperature'])
+
+
 
 for resource in resources:
 	# read out resource -> contains a path element (/fan + operations...)
