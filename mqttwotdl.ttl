@@ -19,26 +19,6 @@
 #    Annotation properties
 #################################################################
 
-###  http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#mqttEndpoint
-wotdl:mqttEndpoint rdf:type owl:AnnotationProperty .
-
-
-###  http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#mqttMessage
-wotdl:mqttMessage rdf:type owl:AnnotationProperty .
-
-
-###  http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#operation
-wotdl:operation rdf:type owl:AnnotationProperty .
-
-
-###  http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#publishesOn
-wotdl:publishesOn rdf:type owl:AnnotationProperty .
-
-
-###  http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#subscribesTo
-wotdl:subscribesTo rdf:type owl:AnnotationProperty .
-
-
 ###  http://www.semanticweb.org/owl/owlapi/turtle#affects
 <http://www.semanticweb.org/owl/owlapi/turtle#affects> rdf:type owl:AnnotationProperty .
 
@@ -179,6 +159,11 @@ wotdl:on rdf:type owl:ObjectProperty ;
 #    Data properties
 #################################################################
 
+###  #operator
+<#operator> rdf:type owl:DatatypeProperty ;
+            rdfs:domain wotdl:PreCondition ;
+            rdfs:range rdfs:Literal .
+
 ###  http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#decrement
 wotdl:decrement rdf:type owl:DatatypeProperty ;
                 rdfs:domain wotdl:DecreaseEffect ;
@@ -294,7 +279,7 @@ wotdl:mqttEndpoint rdf:type owl:DatatypeProperty ;
               rdfs:domain wotdl:MqttCommunication ;
               rdfs:range xsd:string ;
               rdfs:comment "Link to the local MQTT broker instance"@en ;
-              rdfs:label "MQTT endpoint"@en .
+              rdfs:label "mqttEndpoint"@en .
 
 
 ###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#mqttMessage
@@ -302,7 +287,7 @@ wotdl:mqttMessage rdf:type owl:DatatypeProperty ;
              rdfs:domain wotdl:MqttCommunication ;
              rdfs:range xsd:string ;
              rdfs:comment "information that is exchanged"@en ;
-             rdfs:label "MQTT message"@en .
+             rdfs:label "mqttMessage"@en .
 
 
 ###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#publishesOn
@@ -310,7 +295,7 @@ wotdl:publishesOn rdf:type owl:DatatypeProperty ;
              rdfs:domain wotdl:MqttCommunication ;
              rdfs:range xsd:string ;
              rdfs:comment "MQTT method for sending messages"@en ;
-             rdfs:label "publishes on"@en .
+             rdfs:label "publishesOn"@en .
 
 
 ###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#subscribesTo
@@ -318,7 +303,7 @@ wotdl:subscribesTo rdf:type owl:DatatypeProperty ;
               rdfs:domain wotdl:MqttCommunication ;
               rdfs:range xsd:string ;
               rdfs:comment "MQTT message for receiving information"@en ;
-              rdfs:label "subscribes to"@en .
+              rdfs:label "subscribesTo"@en .
 
 
 #################################################################
@@ -471,28 +456,201 @@ ssn:Sensor rdf:type owl:Class .
 wotdl:MqttCommunication rdf:type owl:Class ;
                    rdfs:subClassOf wotdl:Actuation ,
                                    wotdl:Measurement ;
-                   rdfs:label "MQTT communication information"@en .
+                   rdfs:comment "Provides all the required information to execute an MQTT request to perform either Actuation or Measurement. The MQTT Request contains mqttMessage, mqttEndpoint, subscribesTo and publishesOn." ;
+                   rdfs:label "MqttCommunication"@en .
 
 
 #################################################################
 #    Individuals
 #################################################################
 
-###  http://vsr.informatik.tu-chemnitz.de/projects/growth/samples/#AmbientLuminosity
-<http://vsr.informatik.tu-chemnitz.de/projects/growth/samples/#AmbientLuminosity> rdf:type owl:NamedIndividual .
+
+<#Fan>
+    a wotdl:Actuator ;
+    wotdl:hasTransition <#TurnOffTransition>, <#FanSpeedSetTransition> , <#IncreaseSpeedTransition>, <#DecreaseSpeedTransition>;
+    wotdl:name "dc_motor_fan"^^xsd:string ;
+    wotdl:type "fan".
 
 
-###  http://vsr.informatik.tu-chemnitz.de/projects/growth/samples/#LightM
-<http://vsr.informatik.tu-chemnitz.de/projects/growth/samples/#LightM> rdf:type owl:NamedIndividual ,
-                                                                                wotdl:HttpRequest ,
-                                                                                wotdl:Measurement ,
-                                                                                wotdl:MqttCommunication ;
-                                                                       wotdl:measures <http://vsr.informatik.tu-chemnitz.de/projects/growth/samples/#AmbientLuminosity> ;
-                                                                       wotdl:httpMethod "GET"^^xsd:string ;
-                                                                       wotdl:name "get_light_intensity"^^xsd:string ;
-                                                                       wotdl:url "http://10.0.1.200/ambientlight"^^xsd:string ;
-                                                                       wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
-                                                                       wotdl:mqttMessage """contentType: application/json
+<#TurnOffTransition>
+	a wotdl:Transition;
+	wotdl:hasPreCondition <#FanPC>;
+	wotdl:hasActuation <#FanTurnOff> ;
+  wotdl:hasEffect <#IncreaseTemperature> , <#FanPowerState> .
+
+
+<#FanPC>
+	a wotdl:PreCondition;
+	wotdl:on <#FanPowerState>;
+	wotdl:operation "op:numeric-equal";
+	wotdl:value "on"^^xsd:string .
+
+<#FanPowerState>
+    a wotdl:Parameter ;
+    wotdl:name "FanPowerState";
+    wotdl:type "OnOff".
+
+
+ <#FanTurnOff>
+  	a wotdl:HttpRequest, wotdl:MqttCommunication, wotdl:Actuation;
+  	wotdl:httpMethod "POST"^^xsd:string;
+	wotdl:name "fan_turn_off"^^xsd:string;
+	wotdl:url "http://10.0.1.200/fan/off"^^xsd:string ;
+    wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
+    wotdl:mqttMessage """contentType: application/json
+payload:
+    type: string"""^^xsd:string ;
+    wotdl:subscribesTo "fan/3/off"^^xsd:string .
+
+
+<#IncreaseTemperature>
+  a wotdl:IncreaseEffect ;
+  wotdl:affects <#Temperature> .
+
+
+<#Temperature>
+    a wotdl:Parameter ;
+    wotdl:name "Temperature";
+    wotdl:type xsd:decimal .
+
+
+<#FanSpeedSetTransition>
+	a wotdl:Transition;
+	wotdl:hasActuation <#FanSet> ;
+    wotdl:hasEffect <#FanOnEffect> , <#FanSetEffect> .
+
+
+<#FanSet>
+    a wotdl:HttpRequest, wotdl:MqttCommunication, wotdl:Actuation ;
+    wotdl:httpBody """required: true
+content:
+  application/x-www-form-urlencoded:
+    schema:
+      type: object
+      properties:
+        target_speed:
+          type: number
+      required:
+        - target_speed"""^^xsd:decimal ;
+    wotdl:httpMethod "POST"^^xsd:string ;
+    wotdl:name "fan_set"^^xsd:string ;
+    wotdl:url "http://10.0.1.200/fan"^^xsd:string ;
+    wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
+    wotdl:mqttMessage """contentType: application/json
+payload:
+    type: string"""^^xsd:string ;
+    wotdl:subscribesTo "fan/3/setFanSpeed"^^xsd:string .
+
+
+<#FanOnEffect>
+    a wotdl:FixedValueEffect ;
+    wotdl:affects <#FanPowerState> ;
+    wotdl:value "on"^^xsd:string .
+
+
+<#FanSetEffect>
+   a wotdl:FixedValueEffect ;
+   wotdl:affects <#Speed> , <#Temperature> .
+
+
+<#Speed>
+    a wotdl:Parameter ;
+    wotdl:name "Speed";
+    wotdl:type xsd:decimal .
+
+<#IncreaseSpeedTransition>
+	a wotdl:Transition;
+	wotdl:hasPreCondition <#FanPC>;
+	wotdl:hasActuation <#IncreaseFanSpeed>;
+	wotdl:hasEffect <#DecreaseTemperature> , <#IncreaseSpeed>.
+
+
+
+<#IncreaseFanSpeed>
+    a wotdl:HttpRequest, wotdl:MqttCommunication, wotdl:Actuation ;
+    wotdl:httpBody """required: true
+content:
+  application/x-www-form-urlencoded:
+    schema:
+      type: object
+      properties:
+        increment:
+          type: number
+      required:
+        - increment"""^^xsd:decimal ;
+    wotdl:httpMethod "POST"^^xsd:string ;
+    wotdl:name "increase_fan_speed"^^xsd:string ;
+    wotdl:url "http://10.0.1.200/fan/increase"^^xsd:string ;
+    wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
+    wotdl:mqttMessage """contentType: application/json
+payload:
+    type: string"""^^xsd:string ;
+                  wotdl:subscribesTo "fan/2/increaseSpeed"^^xsd:string .
+
+
+<#DecreaseTemperature>
+  a wotdl:DecreaseEffect ;
+  wotdl:affects <#Temperature> .
+
+
+<#IncreaseSpeed>
+  a wotdl:IncreaseEffect ;
+  wotdl:affects <#Speed> ;
+  wotdl:increment "1"^^xsd:decimal .
+
+
+<#DecreaseSpeedTransition>
+	a wotdl:Transition;
+	wotdl:hasPreCondition <#FanPC>;
+	wotdl:hasActuation <#DecreaseFanSpeed>;
+	wotdl:hasEffect <#IncreaseTemperature> , <#DecreaseSpeed>.
+
+
+
+<#DecreaseFanSpeed>
+    a wotdl:HttpRequest, wotdl:MqttCommunication, wotdl:Actuation ;
+    wotdl:httpBody """required: true
+content:
+  application/x-www-form-urlencoded:
+    schema:
+      type: object
+      properties:
+        decrement:
+          type: number
+      required:
+        - decrement"""^^xsd:decimal ;
+    wotdl:httpMethod "POST"^^xsd:string ;
+    wotdl:name "decrease_fan_speed"^^xsd:string ;
+    wotdl:url "http://10.0.1.200/fan/decrease"^^xsd:string ;
+    wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
+    wotdl:mqttMessage """contentType: application/json
+payload:
+    type: string"""^^xsd:string ;
+    wotdl:subscribesTo "fan/3/decreaseSpeed"^^xsd:string .
+
+
+
+<#DecreaseSpeed>
+  a wotdl:IncreaseEffect ;
+  wotdl:affects <#Speed> ;
+  wotdl:decrement "1"^^xsd:decimal .
+
+
+<#light>
+    a wotdl:Sensor ;
+    wotdl:hasMeasurement <#LightM>;
+    wotdl:name "light_sensor"^^xsd:string ;
+    wotdl:type "fan".
+
+
+<#LightM>
+    a wotdl:HttpRequest, wotdl:MqttCommunication, wotdl:Measurement ;
+    wotdl:measures <#AmbientLuminosity> ;
+    wotdl:httpMethod "GET"^^xsd:string ;
+    wotdl:name "get_light_intensity"^^xsd:string ;
+    wotdl:url "http://10.0.1.200/ambientlight"^^xsd:string ;
+    wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
+    wotdl:mqttMessage """contentType: application/json
 payload:
     type: object
       properties:
@@ -508,477 +666,144 @@ payload:
           type: string
           format: date-time
           description: Date and time when the message was sent."""^^xsd:string ;
-                                                                       wotdl:publishesOn "light"^^xsd:string .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#AmbientHumidity
-<http://www.semanticweb.org/owl/owlapi/turtle#AmbientHumidity> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#AmbientLuminosity
-<http://www.semanticweb.org/owl/owlapi/turtle#AmbientLuminosity> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#AmbientTemperature
-<http://www.semanticweb.org/owl/owlapi/turtle#AmbientTemperature> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#DecreaseBrightness
-<http://www.semanticweb.org/owl/owlapi/turtle#DecreaseBrightness> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#DecreaseFanSpeed
-<http://www.semanticweb.org/owl/owlapi/turtle#DecreaseFanSpeed> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#DecreaseSpeed
-<http://www.semanticweb.org/owl/owlapi/turtle#DecreaseSpeed> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#DecreaseSpeedTransition
-<http://www.semanticweb.org/owl/owlapi/turtle#DecreaseSpeedTransition> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#DecreaseTemperature
-<http://www.semanticweb.org/owl/owlapi/turtle#DecreaseTemperature> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#FanOnEffect
-<http://www.semanticweb.org/owl/owlapi/turtle#FanOnEffect> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#FanPC
-<http://www.semanticweb.org/owl/owlapi/turtle#FanPC> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#FanPowerState
-<http://www.semanticweb.org/owl/owlapi/turtle#FanPowerState> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#FanSet
-<http://www.semanticweb.org/owl/owlapi/turtle#FanSet> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#FanSetEffect
-<http://www.semanticweb.org/owl/owlapi/turtle#FanSetEffect> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#FanSpeedSetTransition
-<http://www.semanticweb.org/owl/owlapi/turtle#FanSpeedSetTransition> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#FanTurnOff
-<http://www.semanticweb.org/owl/owlapi/turtle#FanTurnOff> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#HeatingOff
-<http://www.semanticweb.org/owl/owlapi/turtle#HeatingOff> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#HeatingOffEffect
-<http://www.semanticweb.org/owl/owlapi/turtle#HeatingOffEffect> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#HeatingOffPrecondition
-<http://www.semanticweb.org/owl/owlapi/turtle#HeatingOffPrecondition> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#HeatingOffTransition
-<http://www.semanticweb.org/owl/owlapi/turtle#HeatingOffTransition> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#HeatingOn
-<http://www.semanticweb.org/owl/owlapi/turtle#HeatingOn> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#HeatingOnEffect
-<http://www.semanticweb.org/owl/owlapi/turtle#HeatingOnEffect> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#HeatingOnPrecondition
-<http://www.semanticweb.org/owl/owlapi/turtle#HeatingOnPrecondition> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#HeatingOnTransition
-<http://www.semanticweb.org/owl/owlapi/turtle#HeatingOnTransition> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#HeatingPowerState
-<http://www.semanticweb.org/owl/owlapi/turtle#HeatingPowerState> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#HumidityM
-<http://www.semanticweb.org/owl/owlapi/turtle#HumidityM> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#IncreaseBrightness
-<http://www.semanticweb.org/owl/owlapi/turtle#IncreaseBrightness> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#IncreaseFanSpeed
-<http://www.semanticweb.org/owl/owlapi/turtle#IncreaseFanSpeed> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#IncreaseSpeed
-<http://www.semanticweb.org/owl/owlapi/turtle#IncreaseSpeed> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#IncreaseSpeedTransition
-<http://www.semanticweb.org/owl/owlapi/turtle#IncreaseSpeedTransition> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#IncreaseTemperature
-<http://www.semanticweb.org/owl/owlapi/turtle#IncreaseTemperature> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#LampActuator
-<http://www.semanticweb.org/owl/owlapi/turtle#LampActuator> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#LampOff
-<http://www.semanticweb.org/owl/owlapi/turtle#LampOff> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#LampOffPrecondition
-<http://www.semanticweb.org/owl/owlapi/turtle#LampOffPrecondition> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#LampOffTransition
-<http://www.semanticweb.org/owl/owlapi/turtle#LampOffTransition> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#LampOn
-<http://www.semanticweb.org/owl/owlapi/turtle#LampOn> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#LampOnPrecondition
-<http://www.semanticweb.org/owl/owlapi/turtle#LampOnPrecondition> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#LampOnTransition
-<http://www.semanticweb.org/owl/owlapi/turtle#LampOnTransition> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#LampPowerState
-<http://www.semanticweb.org/owl/owlapi/turtle#LampPowerState> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#LightM
-<http://www.semanticweb.org/owl/owlapi/turtle#LightM> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#Speed
-<http://www.semanticweb.org/owl/owlapi/turtle#Speed> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#Temperature
-<http://www.semanticweb.org/owl/owlapi/turtle#Temperature> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#TemperatureM
-<http://www.semanticweb.org/owl/owlapi/turtle#TemperatureM> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#ThermostatEffect
-<http://www.semanticweb.org/owl/owlapi/turtle#ThermostatEffect> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#ThermostatSet
-<http://www.semanticweb.org/owl/owlapi/turtle#ThermostatSet> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#ThermostatTransition
-<http://www.semanticweb.org/owl/owlapi/turtle#ThermostatTransition> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#TurnLampOff
-<http://www.semanticweb.org/owl/owlapi/turtle#TurnLampOff> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#TurnLampOn
-<http://www.semanticweb.org/owl/owlapi/turtle#TurnLampOn> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#TurnOffTransition
-<http://www.semanticweb.org/owl/owlapi/turtle#TurnOffTransition> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#TvOff
-<http://www.semanticweb.org/owl/owlapi/turtle#TvOff> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#TvOn
-<http://www.semanticweb.org/owl/owlapi/turtle#TvOn> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#tvOffTransition
-<http://www.semanticweb.org/owl/owlapi/turtle#tvOffTransition> rdf:type owl:NamedIndividual .
-
-
-###  http://www.semanticweb.org/owl/owlapi/turtle#tvOnTransition
-<http://www.semanticweb.org/owl/owlapi/turtle#tvOnTransition> rdf:type owl:NamedIndividual .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#AmbientLuminosity
-:AmbientLuminosity rdf:type owl:NamedIndividual ,
-                            wotdl:Parameter ;
-                   wotdl:name "AmbientLuminosity" .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#DecreaseBrightness
-:DecreaseBrightness rdf:type owl:NamedIndividual ,
-                             wotdl:DecreaseEffect ;
-                    wotdl:affects <http://www.semanticweb.org/owl/owlapi/turtle#AmbientLuminosity> .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#DecreaseFanSpeed
-:DecreaseFanSpeed rdf:type owl:NamedIndividual ,
-                           wotdl:Actuation ,
-                           wotdl:HttpRequest ,
-                           wotdl:MqttCommunication ;
-                  wotdl:httpBody """required: true
-        content:
-            application/x-www-form-urlencoded:
-              schema:
-                  type: object
-                  properties:
-                    decrement:
-                      type: number
-                  required:
-                    - decrement"""^^xsd:string ;
-                  wotdl:httpMethod "POST"^^xsd:string ;
-                  wotdl:name "decrease_fan_speed"^^xsd:string ;
-                  wotdl:url "http://10.0.1.200/fan/decrease"^^xsd:string ;
-                  wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
-                  wotdl:mqttMessage """contentType: application/json
+    wotdl:publishesOn "light"^^xsd:string .
+
+<#AmbientLuminosity>
+  a wotdl:Parameter;
+  wotdl:name "AmbientLuminosity".
+
+  <#PhilipsHue>
+    a wotdl:CompositeDevice ;
+    wotdl:hasActuator <#LampActuator> ;
+    wotdl:name "philipshue"^^xsd:string ;
+    wotdl:type "lamp"^^xsd:string .
+
+
+<#LampActuator>
+    a wotdl:Actuator ;
+    wotdl:name "philipshue"^^xsd:string ;
+    wotdl:hasTransition <#LampOffTransition> , <#LampOnTransition>.
+
+<#LampOffTransition>
+    a wotdl:Transition ;
+    wotdl:hasPreCondition <#LampOffPrecondition>;
+    wotdl:hasActuation <#LampOff> ;
+    wotdl:hasEffect <#DecreaseBrightness> , <#TurnLampOff> .
+
+
+<#LampOffPrecondition>
+    a wotdl:PreCondition ;
+    wotdl:on <#LampPowerState> ;
+    wotdl:value "on"^^rdfs:Literal .
+
+<#LampOff>
+    a wotdl:MqttCommunication, wotdl:HttpRequest, wotdl:Actuation ;
+    wotdl:httpMethod "PUT"^^xsd:string ;
+    wotdl:url "http://10.0.1.200/lights/off"^^xsd:string ;
+    wotdl:name "switch_off_lamp"^^xsd:string ;
+    wotdl:subscribesTo "light/1/off"^^xsd:string ;
+    wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
+    wotdl:mqttMessage """contentType: application/json
+        payload:"""^^xsd:string .
+
+
+
+<#DecreaseBrightness>
+    a wotdl:DecreaseEffect ;
+    :affects :AmbientLuminosity .
+
+<#AmbientLuminosity>
+    a wotdl:Parameter;
+    wotdl:name "AmbientLuminosity".
+
+
+<#TurnLampOff>
+    a wotdl:FixedValueEffect ;
+    wotdl:affects :LampPowerState ;
+    wotdl:value "off"^^rdfs:Literal .
+
+<#LampOnTransition>
+    a wotdl:Transition ;
+    wotdl:hasPreCondition <#LampOnPrecondition> ;
+    wotdl:hasActuation <#LampOn> ;
+    wotdl:hasEffect <#IncreaseBrightness> , <#TurnLampOn> .
+
+<#LampOnPrecondition>
+    a wotdl:PreCondition ;
+    wotdl:on <#LampPowerState> ;
+    wotdl:value "off"^^rdfs:Literal .
+
+<#LampPowerState>
+    a wotdl:Parameter ;
+    wotdl:name "LampPowerState"^^xsd:string ;
+    wotdl:type "onoff".
+
+
+<#LampOn>
+    a wotdl:HttpRequest, wotdl:MqttCommunication, wotdl:Actuation ;
+    wotdl:subscribesTo "light/1/on" ;
+    wotdl:mqttEndpoint "mqtt://localhost" ;
+    wotdl:mqttMessage """contentType: application/json
+        payload:"""^^xsd:string ;
+    wotdl:httpMethod "PUT"^^xsd:string ;
+    wotdl:name "switch_on_lamp"^^xsd:string ;
+    wotdl:url "http://10.0.1.200/lights/on"^^xsd:string .
+
+
+<#TurnLampOn> rdf:type wotdl:FixedValueEffect ;
+             wotdl:affects <#LampPowerState> ;
+             wotdl:value "on"^^rdfs:Literal .
+
+
+<#temperature>
+    a wotdl:Sensor ;
+    wotdl:hasMeasurement <#TemperatureM>;
+  wotdl:name "temperature_humidity_sensor"^^xsd:string ;
+    wotdl:type "temperature".
+
+<#TemperatureM>
+    a wotdl:HttpRequest, wotdl:MqttCommunication, wotdl:Measurement ;
+    wotdl:measures <#AmbientTemperature> ;
+    wotdl:httpMethod "GET"^^xsd:string ;
+    wotdl:name "get_temperature"^^xsd:string ;
+    wotdl:url "http://10.0.1.200/temperature"^^xsd:string ;
+    wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
+    wotdl:mqttMessage """contentType: application/json
 payload:
-    type: string"""^^xsd:string ;
-                  wotdl:subscribesTo "fan/3/decreaseSpeed"^^xsd:string .
+    type: object
+      properties:
+        id:
+          type: integer
+          minimum: -10
+          description: Id of the temperature sensor
+        temperature:
+          type: integer
+          minimum: 0
+          description: Temperature measured as celcuis.
+        sentAt:
+          type: string
+          format: date-time
+          description: Date and time when the message was sent."""^^xsd:string ;
+              wotdl:publishesOn "temperature"^^xsd:string .
 
+<#AmbientTemperature>
+  a wotdl:Parameter;
+  wotdl:name "AmbientTemperature".
 
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#DecreaseSpeed
-:DecreaseSpeed rdf:type owl:NamedIndividual ,
-                        wotdl:DecreaseEffect ;
-               wotdl:affects <http://www.semanticweb.org/owl/owlapi/turtle#Speed> ;
-               wotdl:decrement 1 .
+<#humidity>
+    a wotdl:Sensor ;
+    wotdl:hasMeasurement <#HumidityM>;
+  wotdl:name "temperature_humidity_sensor"^^xsd:string ;
+    wotdl:type "humidity".
 
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#DecreaseSpeedTransition
-:DecreaseSpeedTransition rdf:type owl:NamedIndividual ,
-                                  wotdl:Transition ;
-                         wotdl:hasActuation <http://www.semanticweb.org/owl/owlapi/turtle#DecreaseFanSpeed> ;
-                         wotdl:hasEffect <http://www.semanticweb.org/owl/owlapi/turtle#DecreaseSpeed> ,
-                                         <http://www.semanticweb.org/owl/owlapi/turtle#IncreaseTemperature> ;
-                         wotdl:hasPreCondition <http://www.semanticweb.org/owl/owlapi/turtle#FanPC> .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#DecreaseTemperature
-:DecreaseTemperature rdf:type owl:NamedIndividual ,
-                              wotdl:DecreaseEffect ;
-                     wotdl:affects <http://www.semanticweb.org/owl/owlapi/turtle#Temperature> .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#Fan
-:Fan rdf:type owl:NamedIndividual ,
-              wotdl:Actuator ;
-     wotdl:hasTransition <http://www.semanticweb.org/owl/owlapi/turtle#DecreaseSpeedTransition> ,
-                         <http://www.semanticweb.org/owl/owlapi/turtle#FanSpeedSetTransition> ,
-                         <http://www.semanticweb.org/owl/owlapi/turtle#IncreaseSpeedTransition> ,
-                         <http://www.semanticweb.org/owl/owlapi/turtle#TurnOffTransition> ;
-     wotdl:name "dc_motor_fan"^^xsd:string ;
-     wotdl:type "fan" .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#FanOnEffect
-:FanOnEffect rdf:type owl:NamedIndividual ,
-                      wotdl:FixedValueEffect ;
-             wotdl:affects <http://www.semanticweb.org/owl/owlapi/turtle#FanPowerState> ;
-             wotdl:value "on"^^xsd:string .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#FanPC
-:FanPC rdf:type owl:NamedIndividual ,
-                wotdl:PreCondition ;
-       wotdl:on <http://www.semanticweb.org/owl/owlapi/turtle#FanPowerState> ;
-       wotdl:value "on"^^xsd:string ;
-       wotdl:operation "op:numeric-equal" .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#FanPowerState
-:FanPowerState rdf:type owl:NamedIndividual ,
-                        wotdl:Parameter ;
-               wotdl:name "FanPowerState" ;
-               wotdl:type "OnOff" .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#FanSet
-:FanSet rdf:type owl:NamedIndividual ,
-                 wotdl:Actuation ,
-                 wotdl:HttpRequest ,
-                 wotdl:MqttCommunication ;
-        wotdl:httpBody """required: true
-        content:
-            application/x-www-form-urlencoded:
-              schema:
-                  type: object
-                  properties:
-                    target_speed:
-                      type: number
-                  required:
-                    - target_speed"""^^xsd:string ;
-        wotdl:name "fan_set"^^xsd:string ;
-        wotdl:url "http://10.0.1.200/fan"^^xsd:string ;
-        wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
-        wotdl:mqttMessage """contentType: application/json
-payload:
-    type: string"""^^xsd:string ;
-        wotdl:subscribesTo "fan/3/setFanSpeed"^^xsd:string ;
-        <http://www.semanticweb.org/owl/owlapi/turtle#httpMethod> "POST"^^xsd:string .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#FanSetEffect
-:FanSetEffect rdf:type owl:NamedIndividual ,
-                       wotdl:FixedValueEffect ;
-              wotdl:affects <http://www.semanticweb.org/owl/owlapi/turtle#Speed> ,
-                            <http://www.semanticweb.org/owl/owlapi/turtle#Temperature> .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#FanSpeedSetTransition
-:FanSpeedSetTransition rdf:type owl:NamedIndividual ,
-                                wotdl:Transition ;
-                       wotdl:hasActuation <http://www.semanticweb.org/owl/owlapi/turtle#FanSet> ;
-                       wotdl:hasEffect <http://www.semanticweb.org/owl/owlapi/turtle#FanOnEffect> ,
-                                       <http://www.semanticweb.org/owl/owlapi/turtle#FanSetEffect> .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#FanTurnOff
-:FanTurnOff rdf:type owl:NamedIndividual ,
-                     wotdl:Actuation ,
-                     wotdl:HttpRequest ,
-                     wotdl:MqttCommunication ;
-            wotdl:httpMethod "POST"^^xsd:string ;
-            wotdl:name "fan_turn_off"^^xsd:string ;
-            wotdl:url "http://10.0.1.200/fan/off"^^xsd:string ;
-            wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
-            wotdl:mqttMessage """contentType: application/json
-payload:
-    type: string"""^^xsd:string ;
-            wotdl:subscribesTo "fan/3/off"^^xsd:string .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#Heating
-:Heating rdf:type owl:NamedIndividual ,
-                  wotdl:Actuator ;
-         wotdl:hasTransition <http://www.semanticweb.org/owl/owlapi/turtle#HeatingOffTransition> ,
-                             <http://www.semanticweb.org/owl/owlapi/turtle#HeatingOnTransition> ;
-         wotdl:name "relay_heating"^^xsd:string ;
-         wotdl:type "heating" .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#HeatingOff
-:HeatingOff rdf:type owl:NamedIndividual ,
-                     wotdl:Actuation ,
-                     wotdl:HttpRequest ,
-                     wotdl:MqttCommunication ;
-            wotdl:httpMethod "POST"^^xsd:string ;
-            wotdl:name "deactivate_heating"^^xsd:string ;
-            wotdl:url "http://10.0.1.200/heating/off"^^xsd:string ;
-            wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
-            wotdl:mqttMessage """contentType: application/json
-payload:
-    type: string"""^^xsd:string ;
-            wotdl:subscribesTo "heating/2/off"^^xsd:string .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#HeatingOffEffect
-:HeatingOffEffect rdf:type owl:NamedIndividual ,
-                           wotdl:FixedValueEffect ;
-                  wotdl:affects <http://www.semanticweb.org/owl/owlapi/turtle#HeatingPowerState> ;
-                  wotdl:value "off"^^xsd:string .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#HeatingOffPrecondition
-:HeatingOffPrecondition rdf:type owl:NamedIndividual ,
-                                 wotdl:PreCondition ;
-                        wotdl:on <http://www.semanticweb.org/owl/owlapi/turtle#HeatingPowerState> ;
-                        wotdl:value "on"^^xsd:string .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#HeatingOffTransition
-:HeatingOffTransition rdf:type owl:NamedIndividual ,
-                               wotdl:Transition ;
-                      wotdl:hasActuation <http://www.semanticweb.org/owl/owlapi/turtle#HeatingOff> ;
-                      wotdl:hasEffect <http://www.semanticweb.org/owl/owlapi/turtle#DecreaseTemperature> ,
-                                      <http://www.semanticweb.org/owl/owlapi/turtle#HeatingOffEffect> ;
-                      wotdl:hasPreCondition <http://www.semanticweb.org/owl/owlapi/turtle#HeatingOffPrecondition> .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#HeatingOn
-:HeatingOn rdf:type owl:NamedIndividual ,
-                    wotdl:Actuation ,
-                    wotdl:HttpRequest ,
-                    wotdl:MqttCommunication ;
-           wotdl:httpBody """required: true
-        content:
-            application/x-www-form-urlencoded:
-              schema:
-                  type: object
-                  properties:
-                    power:
-                      type: number
-                  required:
-                    - power"""^^xsd:string ;
-           wotdl:name "activate_heating"^^xsd:string ;
-           wotdl:url "http://10.0.1.134/heating/on"^^xsd:string ;
-           wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
-           wotdl:mqttMessage """contentType: application/json
-payload:
-    type: string"""^^xsd:string ;
-           wotdl:subscribesTo "heating/2/on"^^xsd:string ;
-           <http://www.semanticweb.org/owl/owlapi/turtle#httpMethod> "POST"^^xsd:string .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#HeatingOnEffect
-:HeatingOnEffect rdf:type owl:NamedIndividual ,
-                          wotdl:FixedValueEffect ;
-                 wotdl:affects <http://www.semanticweb.org/owl/owlapi/turtle#HeatingPowerState> ;
-                 wotdl:value "on"^^xsd:string .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#HeatingOnPrecondition
-:HeatingOnPrecondition rdf:type owl:NamedIndividual ,
-                                wotdl:PreCondition ;
-                       wotdl:on <http://www.semanticweb.org/owl/owlapi/turtle#HeatingPowerState> ;
-                       wotdl:value "off"^^xsd:string .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#HeatingOnTransition
-:HeatingOnTransition rdf:type owl:NamedIndividual ,
-                              wotdl:Transition ;
-                     wotdl:hasActuation <http://www.semanticweb.org/owl/owlapi/turtle#HeatingOn> ;
-                     wotdl:hasEffect <http://www.semanticweb.org/owl/owlapi/turtle#HeatingOnEffect> ,
-                                     <http://www.semanticweb.org/owl/owlapi/turtle#IncreaseTemperature> ;
-                     wotdl:hasPreCondition <http://www.semanticweb.org/owl/owlapi/turtle#HeatingOnPrecondition> .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#HeatingPowerState
-:HeatingPowerState rdf:type owl:NamedIndividual ,
-                            wotdl:Parameter ;
-                   wotdl:name "HeatingPowerState" ;
-                   wotdl:type "OnOff" .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#HumidityM
-:HumidityM rdf:type owl:NamedIndividual ,
-                    wotdl:HttpRequest ,
-                    wotdl:Measurement ,
-                    wotdl:MqttCommunication ;
-           wotdl:measures <http://www.semanticweb.org/owl/owlapi/turtle#AmbientHumidity> ;
-           wotdl:httpMethod "GET"^^xsd:string ;
-           wotdl:name "get_humidity"^^xsd:string ;
-           wotdl:url "http://10.0.1.200/humidity"^^xsd:string ;
-           wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
-           wotdl:mqttMessage """contentType: application/json
+<#HumidityM>
+    a wotdl:HttpRequest, wotdl:MqttCommunication, wotdl:Measurement ;
+    wotdl:measures <#AmbientHumidity> ;
+    wotdl:httpMethod "GET"^^xsd:string ;
+    wotdl:name "get_humidity"^^xsd:string ;
+    wotdl:url "http://10.0.1.200/humidity"^^xsd:string ;
+    wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
+    wotdl:mqttMessage """contentType: application/json
 payload:
     type: object
       properties:
@@ -996,347 +821,204 @@ payload:
           description: Date and time when the message was sent."""^^xsd:string ;
            wotdl:publishesOn "humidity"^^xsd:string .
 
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#IncreaseBrightness
-:IncreaseBrightness rdf:type owl:NamedIndividual ,
-                             wotdl:IncreaseEffect ;
-                    wotdl:affects <http://www.semanticweb.org/owl/owlapi/turtle#AmbientLuminosity> .
+<#AmbientHumidity>
+  a wotdl:Parameter;
+  wotdl:name "AmbientHumidity".
 
 
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#IncreaseFanSpeed
-:IncreaseFanSpeed rdf:type owl:NamedIndividual ,
-                           wotdl:Actuation ,
-                           wotdl:HttpRequest ,
-                           wotdl:MqttCommunication ;
-                  wotdl:httpBody """required: true
-        content:
-            application/x-www-form-urlencoded:
-              schema:
-                  type: object
-                  properties:
-                    increment:
-                      type: number
-                  required:
-                    - increment"""^^xsd:string ;
-                  wotdl:name "increase_fan_speed"^^xsd:string ;
-                  wotdl:url "http://10.0.1.200/fan/increase"^^xsd:string ;
-                  wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
-                  wotdl:mqttMessage """contentType: application/json
-payload:
-    type: string"""^^xsd:string ;
-                  wotdl:subscribesTo "fan/2/increaseSpeed"^^xsd:string ;
-                  <http://www.semanticweb.org/owl/owlapi/turtle#httpMethod> "POST"^^xsd:string .
+
+<#Thermostat>
+    a wotdl:Actuator ;
+    wotdl:hasTransition :ThermostatTransition ;
+    wotdl:name "thermostat"^^xsd:string ;
+    wotdl:type "thermostat".
 
 
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#IncreaseSpeed
-:IncreaseSpeed rdf:type owl:NamedIndividual ,
-                        wotdl:IncreaseEffect ;
-               wotdl:affects <http://www.semanticweb.org/owl/owlapi/turtle#Speed> ;
-               wotdl:increment 1 .
+<#ThermostatTransition>
+    a wotdl:Transition ;
+    wotdl:hasActuation <#ThermostatSet> ;
+    wotdl:hasEffect <#HeatingOnEffect> , <#ThermostatEffect> .
 
 
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#IncreaseSpeedTransition
-:IncreaseSpeedTransition rdf:type owl:NamedIndividual ,
-                                  wotdl:Transition ;
-                         wotdl:hasActuation <http://www.semanticweb.org/owl/owlapi/turtle#IncreaseFanSpeed> ;
-                         wotdl:hasEffect <http://www.semanticweb.org/owl/owlapi/turtle#DecreaseTemperature> ,
-                                         <http://www.semanticweb.org/owl/owlapi/turtle#IncreaseSpeed> ;
-                         wotdl:hasPreCondition <http://www.semanticweb.org/owl/owlapi/turtle#FanPC> .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#IncreaseTemperature
-:IncreaseTemperature rdf:type owl:NamedIndividual ,
-                              wotdl:IncreaseEffect ;
-                     wotdl:affects <http://www.semanticweb.org/owl/owlapi/turtle#Temperature> .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#LampActuator
-:LampActuator rdf:type owl:NamedIndividual ,
-                       wotdl:Actuator ;
-              wotdl:hasTransition <http://www.semanticweb.org/owl/owlapi/turtle#LampOffTransition> ,
-                                  <http://www.semanticweb.org/owl/owlapi/turtle#LampOnTransition> ;
-              wotdl:name "philipshue"^^xsd:string .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#LampOff
-:LampOff rdf:type owl:NamedIndividual ,
-                  wotdl:Actuation ,
-                  wotdl:HttpRequest ,
-                  wotdl:MqttCommunication ;
-         wotdl:httpMethod "PUT"^^xsd:string ;
-         wotdl:name "switch_off_lamp"^^xsd:string ;
-         wotdl:url "http://10.0.1.200/lights/off"^^xsd:string ;
-         wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
-         wotdl:mqttMessage """contentType: application/json
-payload:
-    type: string"""^^xsd:string ;
-         wotdl:subscribesTo "light/1/off"^^xsd:string .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#LampOffPrecondition
-:LampOffPrecondition rdf:type owl:NamedIndividual ,
-                              wotdl:PreCondition ;
-                     wotdl:on <http://www.semanticweb.org/owl/owlapi/turtle#LampPowerState> ;
-                     wotdl:value "on"^^rdfs:Literal .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#LampOffTransition
-:LampOffTransition rdf:type owl:NamedIndividual ,
-                            wotdl:Transition ;
-                   wotdl:hasActuation <http://www.semanticweb.org/owl/owlapi/turtle#LampOff> ;
-                   wotdl:hasEffect <http://www.semanticweb.org/owl/owlapi/turtle#DecreaseBrightness> ,
-                                   <http://www.semanticweb.org/owl/owlapi/turtle#TurnLampOff> ;
-                   wotdl:hasPreCondition <http://www.semanticweb.org/owl/owlapi/turtle#LampOffPrecondition> .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#LampOn
-:LampOn rdf:type owl:NamedIndividual ,
-                 wotdl:Actuation ,
-                 wotdl:HttpRequest ,
-                 wotdl:MqttCommunication ;
-        wotdl:httpMethod "PUT"^^xsd:string ;
-        wotdl:name "switch_on_lamp"^^xsd:string ;
-        wotdl:url "http://10.0.1.200/lights/on"^^xsd:string ;
-        wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
-        wotdl:mqttMessage """contentType: application/json
-payload:
-    type: string"""^^xsd:string ;
-        wotdl:subscribesTo "light/1/on"^^xsd:string .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#LampOnPrecondition
-:LampOnPrecondition rdf:type owl:NamedIndividual ,
-                             wotdl:PreCondition ;
-                    wotdl:on <http://www.semanticweb.org/owl/owlapi/turtle#LampPowerState> ;
-                    wotdl:value "off"^^rdfs:Literal .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#LampOnTransition
-:LampOnTransition rdf:type owl:NamedIndividual ,
-                           wotdl:Transition ;
-                  wotdl:hasActuation <http://www.semanticweb.org/owl/owlapi/turtle#LampOn> ;
-                  wotdl:hasEffect <http://www.semanticweb.org/owl/owlapi/turtle#IncreaseBrightness> ,
-                                  <http://www.semanticweb.org/owl/owlapi/turtle#TurnLampOn> ;
-                  wotdl:hasPreCondition <http://www.semanticweb.org/owl/owlapi/turtle#LampOnPrecondition> .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#LampPowerState
-:LampPowerState rdf:type owl:NamedIndividual ,
-                         wotdl:Parameter ;
-                wotdl:name "LampPowerState"^^xsd:string ;
-                wotdl:type "onoff" .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#PhilipsHue
-:PhilipsHue rdf:type owl:NamedIndividual ,
-                     wotdl:CompositeDevice ;
-            wotdl:hasActuator <http://www.semanticweb.org/owl/owlapi/turtle#LampActuator> ;
-            wotdl:name "philipshue"^^xsd:string ;
-            wotdl:type "lamp"^^xsd:string .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#Speed
-:Speed rdf:type owl:NamedIndividual ,
-                wotdl:Parameter ;
-       wotdl:name "Speed" ;
-       wotdl:type xsd:decimal .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#Temperature
-:Temperature rdf:type owl:NamedIndividual ,
-                      wotdl:Parameter ;
-             wotdl:name "Temperature" ;
-             wotdl:type xsd:decimal .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#TemperatureM
-:TemperatureM rdf:type owl:NamedIndividual ,
-                       wotdl:HttpRequest ,
-                       wotdl:Measurement ,
-                       wotdl:MqttCommunication ;
-              wotdl:measures <http://www.semanticweb.org/owl/owlapi/turtle#AmbientTemperature> ;
-              wotdl:httpMethod "GET"^^xsd:string ;
-              wotdl:name "get_temperature"^^xsd:string ;
-              wotdl:url "http://10.0.1.200/temperature"^^xsd:string ;
-              wotdl:mqttEndpoint "mqtt://localhost" ;
-              wotdl:mqttMessage """contentType: application/json
-payload:
-    type: object
+<#ThermostatSet>
+  a wotdl:HttpRequest, wotdl:MqttCommunication, wotdl:Actuation ;
+  wotdl:httpBody """required: true
+content:
+  application/x-www-form-urlencoded:
+    schema:
+      type: object
       properties:
-        id:
-          type: integer
-          minimum: -10
-          description: Id of the temperature sensor
-        temperature:
-          type: integer
-          minimum: 0
-          description: Temperature measured as celcuis.
-        sentAt:
-          type: string
-          format: date-time
-          description: Date and time when the message was sent."""^^xsd:string ;
-              wotdl:publishesOn "temperature" .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#Thermostat
-:Thermostat rdf:type owl:NamedIndividual ,
-                     wotdl:Actuator ;
-            wotdl:hasTransition <http://www.semanticweb.org/owl/owlapi/turtle#ThermostatTransition> ;
-            wotdl:name "thermostat"^^xsd:string ;
-            wotdl:type "thermostat"^^xsd:string .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#ThermostatEffect
-:ThermostatEffect rdf:type owl:NamedIndividual ,
-                           wotdl:IncreaseEffect ;
-                  wotdl:affects <http://www.semanticweb.org/owl/owlapi/turtle#Temperature> .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#ThermostatSet
-:ThermostatSet rdf:type owl:NamedIndividual ,
-                        wotdl:Actuation ,
-                        wotdl:HttpRequest ,
-                        wotdl:MqttCommunication ;
-               wotdl:httpBody """required: true
-        content:
-            application/x-www-form-urlencoded:
-              schema:
-                  type: object
-                  properties:
-                    targetTemperature:
-                      type: number
-                  required:
-                    - targetTemperature"""^^xsd:string ;
-               wotdl:name "thermostat_set"^^xsd:string ;
-               wotdl:url "http://10.0.1.200/thermostat"^^xsd:string ;
-               wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
-               wotdl:mqttMessage """contentType: application/json
+        targetTemperature:
+          type: number
+      required:
+        - targetTemperature"""^^xsd:string ;
+  wotdl:httpMethod "PUT"^^xsd:string ;
+  wotdl:name "thermostat_set"^^xsd:string ;
+  wotdl:url "http://10.0.1.200/thermostat"^^xsd:string ;
+  wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
+  wotdl:mqttMessage """contentType: application/json
 payload:
     type: string"""^^xsd:string ;
-               wotdl:subscribesTo "thermostat/5/setTemperature"^^xsd:string ;
-               <http://www.semanticweb.org/owl/owlapi/turtle#httpMethod> "PUT"^^xsd:string .
+  wotdl:subscribesTo "thermostat/5/setTemperature"^^xsd:string .
+
+<#HeatingOnEffect>
+    a wotdl:FixedValueEffect ;
+    wotdl:affects <#HeatingPowerState> ;
+    wotdl:value "on"^^xsd:string .
 
 
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#ThermostatTransition
-:ThermostatTransition rdf:type owl:NamedIndividual ,
-                               wotdl:Transition ;
-                      wotdl:hasActuation <http://www.semanticweb.org/owl/owlapi/turtle#ThermostatSet> ;
-                      wotdl:hasEffect <http://www.semanticweb.org/owl/owlapi/turtle#HeatingOnEffect> ,
-                                      <http://www.semanticweb.org/owl/owlapi/turtle#ThermostatEffect> .
+  <#ThermostatEffect>
+    a wotdl:IncreaseEffect ;
+    wotdl:affects <#Temperature> .
 
 
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#TurnLampOff
-:TurnLampOff rdf:type owl:NamedIndividual ,
-                      wotdl:FixedValueEffect ;
-             wotdl:affects <http://www.semanticweb.org/owl/owlapi/turtle#LampPowerState> ;
-             wotdl:value "off"^^rdfs:Literal ;
-             wotdl:mqttEndpoint "mqtt://localhost" ;
-             wotdl:mqttMessage """contentType: application/json
+<#Temperature>
+    a wotdl:Parameter ;
+    wotdl:name "Temperature";
+    wotdl:type xsd:decimal .
+
+
+<#HeatingPowerState>
+    a wotdl:Parameter ;
+    wotdl:name "HeatingPowerState";
+    wotdl:type "OnOff".
+
+
+<#Heating>
+  a wotdl:Actuator ;
+  wotdl:hasTransition <#HeatingOffTransition>, <#HeatingOnTransition>;
+  wotdl:name "relay_heating"^^xsd:string ;
+  wotdl:type "heating".
+
+
+<#HeatingOffTransition>
+  a wotdl:Transition;
+  wotdl:hasPreCondition <#HeatingOffPrecondition>;
+  wotdl:hasActuation <#HeatingOff>;
+  wotdl:hasEffect <#DecreaseTemperature>, <#HeatingOffEffect>.
+
+
+<#HeatingOffPrecondition>
+  a wotdl:PreCondition ;
+  wotdl:on <#HeatingPowerState> ;
+  wotdl:value "on"^^xsd:string .
+
+<#HeatingOff>
+  a wotdl:HttpRequest, wotdl:MqttCommunication, wotdl:Actuation ;
+  wotdl:httpMethod "POST"^^xsd:string ;
+  wotdl:name "deactivate_heating"^^xsd:string ;
+  wotdl:url "http://10.0.1.200/heating/off"^^xsd:string ;
+  wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
+  wotdl:mqttMessage """contentType: application/json
 payload:
     type: string"""^^xsd:string ;
-             wotdl:subscribesTo "light/1/off" .
+  wotdl:subscribesTo "heating/2/off"^^xsd:string .
 
 
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#TurnLampOn
-:TurnLampOn rdf:type owl:NamedIndividual ,
-                     wotdl:FixedValueEffect ;
-            wotdl:affects <http://www.semanticweb.org/owl/owlapi/turtle#LampPowerState> ;
-            wotdl:value "on"^^rdfs:Literal .
+<#DecreaseTemperature>
+  a wotdl:DecreaseEffect ;
+  wotdl:affects <#Temperature> .
 
 
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#TurnOffTransition
-:TurnOffTransition rdf:type owl:NamedIndividual ,
-                            wotdl:Transition ;
-                   wotdl:hasActuation <http://www.semanticweb.org/owl/owlapi/turtle#FanTurnOff> ;
-                   wotdl:hasEffect <http://www.semanticweb.org/owl/owlapi/turtle#FanPowerState> ,
-                                   <http://www.semanticweb.org/owl/owlapi/turtle#IncreaseTemperature> ;
-                   wotdl:hasPreCondition <http://www.semanticweb.org/owl/owlapi/turtle#FanPC> .
+<#HeatingOffEffect>
+  a wotdl:FixedValueEffect ;
+  wotdl:affects <#HeatingPowerState> ;
+  wotdl:value "off"^^xsd:string .
 
 
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#TvOff
-:TvOff rdf:type owl:NamedIndividual ,
-                wotdl:Actuation ,
-                wotdl:HttpRequest ,
-                wotdl:MqttCommunication ;
-       wotdl:httpMethod "GET"^^xsd:string ;
-       wotdl:name "switch_off_tv"^^xsd:string ;
-       wotdl:url "http://10.0.1.200/tv/{path-param}/needed/off?queryParam1={myQueryStuff}"^^xsd:string ;
-       wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
-       wotdl:mqttMessage """contentType: application/json
+<#HeatingOnTransition>
+  a wotdl:Transition ;
+  wotdl:hasActuation <#HeatingOn> ;
+  wotdl:hasEffect <#HeatingOnEffect> , <#IncreaseTemperature> ;
+  wotdl:hasPreCondition <#HeatingOnPrecondition> .
+
+
+<#HeatingOn>
+  a wotdl:HttpRequest, wotdl:MqttCommunication, wotdl:Actuation ;
+  wotdl:httpBody """required: true
+content:
+  application/x-www-form-urlencoded:
+    schema:
+      type: object
+      properties:
+        power:
+          type: number
+      required:
+        - power"""^^xsd:string ;
+  wotdl:httpMethod "POST"^^xsd:string ;
+  wotdl:name "activate_heating"^^xsd:string ;
+  wotdl:url "http://10.0.1.200/heating/on"^^xsd:string ;
+  wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
+  wotdl:mqttMessage """contentType: application/json
 payload:
     type: string"""^^xsd:string ;
-       wotdl:subscribesTo "tv/4/off"^^xsd:string .
+  wotdl:subscribesTo "heating/2/on"^^xsd:string .
 
 
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#TvOn
-:TvOn rdf:type owl:NamedIndividual ,
-               wotdl:Actuation ,
-               wotdl:HttpRequest ,
-               wotdl:MqttCommunication ;
-      wotdl:httpBody """required: true
-        content:
-            application/x-www-form-urlencoded:
-              schema:
-                  type: object
-                  properties:
-                    power:
-                      type: number
-                  required:
-                    - power"""^^xsd:string ;
-      wotdl:name "switch_on_tv"^^xsd:string ;
-      wotdl:url "http://10.0.1.200/tv/{path-param}/needed/on"^^xsd:string ;
-      wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
-      wotdl:mqttMessage """contentType: application/json
+<#HeatingOnEffect>
+  a wotdl:FixedValueEffect ;
+  wotdl:affects <#HeatingPowerState> ;
+  wotdl:value "on"^^xsd:string .
+
+
+<#IncreaseTemperature>
+  a wotdl:IncreaseEffect ;
+  wotdl:affects <#Temperature> .
+
+
+<#HeatingOnPrecondition>
+  a wotdl:PreCondition ;
+  wotdl:on <#HeatingPowerState> ;
+  wotdl:value "off"^^xsd:string .
+
+
+<#samsungtv>
+    a wotdl:Actuator, wotdl:Device ;
+    wotdl:hasTransition <#tvOnTransition>;
+    wotdl:hasTransition <#tvOffTransition>;
+    wotdl:name "samsung_tv"^^xsd:string ;
+    wotdl:type "tv"^^xsd:string .
+
+
+
+<#tvOnTransition>
+    a wotdl:Transition ;
+    wotdl:hasActuation <#TvOn> .
+
+
+<#tvOffTransition>
+    a wotdl:Transition ;
+    wotdl:hasActuation <#TvOff> .
+
+
+<#TvOn>
+    a wotdl:HttpRequest, wotdl:MqttCommunication, wotdl:Actuation;
+    wotdl:httpMethod "POST"^^xsd:string ;
+    wotdl:name "switch_on_tv"^^xsd:string ;
+    wotdl:url "http://10.0.1.200/tv/{path-param}/needed/on"^^xsd:string ;
+    wotdl:httpBody """required: true
+content:
+  application/x-www-form-urlencoded:
+    schema:
+      type: object
+      properties:
+        power:
+          type: number
+      required:
+        - power"""^^xsd:string ;
+    wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
+    wotdl:mqttMessage """contentType: application/json
 payload:
     type: string"""^^xsd:string ;
-      wotdl:subscribesTo "tv/4/on"^^xsd:string ;
-      <http://www.semanticweb.org/owl/owlapi/turtle#httpMethod> "POST"^^xsd:string .
+    wotdl:subscribesTo "tv/4/on"^^xsd:string .
 
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#humidity
-:humidity rdf:type owl:NamedIndividual ,
-                   wotdl:Sensor ;
-          wotdl:hasMeasurement <http://www.semanticweb.org/owl/owlapi/turtle#HumidityM> ;
-          wotdl:name "temperature_humidity_sensor"^^xsd:string ;
-          wotdl:type "humidity" .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#light
-:light rdf:type owl:NamedIndividual ,
-                wotdl:Sensor ;
-       wotdl:hasMeasurement <http://www.semanticweb.org/owl/owlapi/turtle#LightM> ;
-       wotdl:name "light_sensor"^^xsd:string ;
-       wotdl:type "light" .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#samsungtv
-:samsungtv rdf:type owl:NamedIndividual ,
-                    wotdl:Actuator ,
-                    wotdl:Device ;
-           wotdl:hasTransition <http://www.semanticweb.org/owl/owlapi/turtle#tvOffTransition> ,
-                               <http://www.semanticweb.org/owl/owlapi/turtle#tvOnTransition> ;
-           wotdl:name "samsung_tv"^^xsd:string ;
-           wotdl:type "tv"^^xsd:string .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#temperature
-:temperature rdf:type owl:NamedIndividual ,
-                      wotdl:Sensor ;
-             wotdl:hasMeasurement <http://www.semanticweb.org/owl/owlapi/turtle#TemperatureM> ;
-             wotdl:name "temperature_humidity_sensor"^^xsd:string ;
-             wotdl:type "temperature" .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#tvOffTransition
-:tvOffTransition rdf:type owl:NamedIndividual ,
-                          wotdl:Transition ;
-                 wotdl:hasActuation <http://www.semanticweb.org/owl/owlapi/turtle#TvOff> .
-
-
-###  https://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#tvOnTransition
-:tvOnTransition rdf:type owl:NamedIndividual ,
-                         wotdl:Transition ;
-                wotdl:hasActuation <http://www.semanticweb.org/owl/owlapi/turtle#TvOn> .
-
-
-###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi
+<#TvOff>
+    a wotdl:HttpRequest, wotdl:MqttCommunication, wotdl:Actuation;
+    wotdl:httpMethod "GET"^^xsd:string ;
+    wotdl:name "switch_off_tv"^^xsd:string ;
+    wotdl:url "http://10.0.1.200/tv/{path-param}/needed/off?queryParam1={myQueryStuff}"^^xsd:string ;
+    wotdl:mqttEndpoint "mqtt://localhost"^^xsd:string ;
+    wotdl:mqttMessage """contentType: application/json
+payload:
+    type: string"""^^xsd:string ;
+    wotdl:subscribesTo "tv/4/off"^^xsd:string .
