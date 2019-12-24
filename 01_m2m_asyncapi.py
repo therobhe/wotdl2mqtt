@@ -23,10 +23,10 @@ find_mqtt_requests = """SELECT ?d ?device ?mqtt_request ?name ?message ?endpoint
             ?device_subclass rdfs:subClassOf wotdl:Device.
             OPTIONAL{ ?d wotdl:name ?device }
             ?mqtt_request a wotdl:MqttCommunication .
-            ?mqtt_request wotdl:subscribesTo ?sub
+            ?mqtt_request wotdl:subscribesTo ?sub .
             OPTIONAL{?mqtt_request wotdl:name ?name}
             ?mqtt_request wotdl:mqttMessage ?message . 
-            ?mqtt_request wotdl:mqttEndpoint ?endpoint
+            ?mqtt_request wotdl:mqttEndpoint ?endpoint .
             OPTIONAL{?mqtt_request wotdl:mqttMessage ?message}
             {
                 ?d wotdl:hasTransition ?t.
