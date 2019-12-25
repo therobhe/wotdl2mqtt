@@ -67,7 +67,7 @@ mqtt_subs = instance.query(find_mqtt_subs, initNs={'wotdl': WOTDL, 'rdfs': RDFS,
 mqtt_pubs = instance.query(find_mqtt_pubs, initNs={'wotdl': WOTDL, 'rdfs': RDFS, 'owl': OWL})
 
 
-# resources dictionary for describing api tree-structure based on key-values: {sub/pub endpoint: pub/sub-indicator...}
+# resources dictionary for describing api tree-structure based on key-values: {sub/pub-endpoint: pub/sub-indicator...}
 resources = defaultdict(list)
 
 # fill resource dict -> actuators
@@ -80,19 +80,27 @@ for device, devicename, mqtt_request, name, message, endpoint, pub in mqtt_pubs:
     print('Device: %s MQTTReq: %s FName: %s Message: %s Endpoint: %s PublishesOn: %s' % (device, mqtt_request, name,  message, endpoint, pub))
     resources[str(pub)].append({'device' : devicename, 'name' : name, 'message' : message, 'publishesOn': pub})
 
-# build api body - loop through resouces-entries and extract required parameter
+# build api body - loop through resources-entries and extract required parameter
 for resource in resources:
     path_params = [p for p in resource.split('/')[1:] if p[0] == '{' and p[-1] == '}']
-    requests = resources[resource]
-    channels[str(resource)] = {}
-    news = {}
-    pubBody = {}
 
+    # for accessing objects within resource
+    requests = resources[resource]
+    # storing room for evalating if resource entry is publisher or subscriber
+    methods = {}
+    # storing room for message information of actuations
+    content = {}
+    # storing room for message information of sensor
+    sensorBody = {}
+
+    # loop through parameter list of resource and build api structure
     for request in requests:
+        # entry => first descriptions after method determination
         entry = {
             'operationId': str(request['name']),
             'summary': str(request['name']) + ' request on device ' + str(request['device'])
         }
+
         parameters = []
         add_parameters = False
 
@@ -110,16 +118,30 @@ for resource in resources:
 
         #if request['body'] != None:
         #    entry['requestBody'] = yaml.load(str(request['body']))
-        for param in request:
-            if (str(param) == 'subscribesTo'):
-                # enhance response body
-                news['payload'] = {'type': 'object'}
-            elif str(param) == 'publishesOn':
-                 news['payload'] = pubBody;
 
-        entry['message'] = news
-        print(str(entry))
-        channels[str(resource)] = entry
+
+        #if request['message'] != None:
+        #    entry['message'] = yaml.load((str(request['message'])))
+
+
+
+        # loop through values of a resource's parameter list
+        for endp in request:
+            # determine the role of the resource
+            if str(endp) == 'subscribesTo':
+                pubOrSub = 'subscribe'
+                # enhance response body
+                content['payload'] = {'type': 'object'}
+            elif str(endp) == 'publishesOn':
+                pubOrSub = 'publish'
+                content['payload'] = sensorBody;
+
+        # add the message description to the entry definition
+        entry['message'] = content
+        # add the message, operationId, summary definition to the subscribe/publish
+        methods[pubOrSub] = entry
+        # add the subscribe/publish + the message etc attachment to the channel resource
+        channels[str(resource)] = methods
 
 
 # create asyncapi overhead for file
