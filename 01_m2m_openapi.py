@@ -82,7 +82,7 @@ for resource in resources:
             responses['201'] = {'description': 'Created'}
 
         entry['responses'] = responses
-
+        print(str(entry))
         paths[str(resource)][str(request['method'])] = entry
 
 port = 9000
