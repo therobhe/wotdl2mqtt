@@ -86,6 +86,7 @@ for resource in resources:
     requests = resources[resource]
     channels[str(resource)] = {}
     news = {}
+    pubBody = {}
 
     for request in requests:
         entry = {
@@ -113,8 +114,8 @@ for resource in resources:
             if (str(param) == 'subscribesTo'):
                 # enhance response body
                 news['payload'] = {'type': 'object'}
-            #elif request['method'] == 'post':
-            ##    responses['201'] = {'description': 'Created'}
+            elif str(param) == 'publishesOn':
+                 news['payload'] = pubBody;
 
         entry['message'] = news
         print(str(entry))
