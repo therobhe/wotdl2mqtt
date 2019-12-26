@@ -9,13 +9,27 @@ INIT_FUNCTION_NAME = 'init'
 
 
 def invoke_implementation(function_name, params, kwargs, device):
+    print('INVOKE IMPLEMENTATION REACHED')
+#    print('TRANSMITTED PARAMETER: ' + str(function_name) + str(params) + str(kwargs) + str(device))
+
     import_path = IMPLEMENTATION_PATH + '.' + device
 
+#    print('IMPORT PATH: ' + str(import_path))
+
     implementation_spec = importlib.util.find_spec(import_path)
+
+#    print('IMPLEMENTATION SPEC: ' + str(implementation_spec))
+
     found = implementation_spec is not None
 
     if found:
+
+#        print('FOUND:')
+
         implementation = importlib.import_module(import_path)
+
+#        print(str(implementation))
+
         if hasattr(implementation, INIT_FUNCTION_NAME):
             plugin_init_function = getattr(implementation, INIT_FUNCTION_NAME)
             plugin_init_function()

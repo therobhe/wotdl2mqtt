@@ -585,7 +585,7 @@ content:
     wotdl:mqttMessage """contentType: application/json
 payload:
     type: string"""^^xsd:string ;
-                  wotdl:subscribesTo "fan/2/increaseSpeed"^^xsd:string .
+                  wotdl:subscribesTo "fan/3/increaseSpeed"^^xsd:string .
 
 
 <#DecreaseTemperature>
