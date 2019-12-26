@@ -1,20 +1,19 @@
 #--------------------Python Code Generator for MQTT-Ontology------------------------------------------------------------
-# part of the WoTDL2MQTT toolchain - invokes runnable source code from the mqttwotdl ontology instance
-# requirement: a local broker instance needs to run in the background in order to run this program
+# step 6 within the WoTDL2MQTT toolchain - invokes runnable source code from the MQTTWoTDL RDF graph
+# requirement: a local broker instance needs to run in the background in order to run this program, & devices connected
 # (c) Robert Heinemann 2019
 
-from collections import defaultdict
 import rdflib
+import re
+import hub
+from threading import Timer
+from collections import defaultdict
 from rdflib import OWL, RDFS, Namespace
 from flask import Flask, render_template
 from flask_mqtt import Mqtt
 from flask_socketio import SocketIO
-import re
-import hub
-
 
 #--------------------------IMPORT-ONTOLOGY-+-EXTRACT-MQTTCOMMUNICATION-INFORMATION--------------------------------------
-
 #import mqtt-ontology to extract device parameter for invoking implementations
 IN = 'mqttwotdl.ttl'
 WOTDL = Namespace('http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#')
@@ -74,11 +73,11 @@ mqtt_pubs = instance.query(find_mqtt_pubs, initNs={'wotdl': WOTDL, 'rdfs': RDFS,
 
 
 #------------------------------------VARIABLES--------------------------------------------------------------------------
-# stores callback functions in connection to the mqttEndpoints (endpoint:callback)
+# stores callback functions in connection to MQTT channel endpoints {endpoint:callback}
 registry = defaultdict(list)
 # mqttEndpoints with variable path-parts ({id}) get replaced by easy wildcard (+)
 topic_variables = re.compile(r'{.+?}')
-# dict for storing ontology parameters
+# dict for storing ontology parameters for each registery channel endpoint
 parameter_registery = defaultdict(list)
 #-----------------------------------------------------------------------------------------------------------------------
 
@@ -141,7 +140,7 @@ qos = {'zero':0, 'one':1, 'two':2}
 def func(**kwargs):
     print (kwargs)  # args accessible via the kwargs dict
 
-# when client @subscribes something, the endpoints automatically stored in registry
+# when client @subscribes something, the channel endpoints automatically stored in registry
 def subscribe(topic):
     def decorator(func):
         # fill registry dict with sub-topic
@@ -415,52 +414,80 @@ def callback11(message):
 
 
 #------------------------------------------SENSOR-CALLBACKS-------------------------------------------------------------
-#  ToDO:
-#   1- for the publish side you need to iterate over all the Measurements in the ontology and extract all the
-#   information about it, like the sensors,...
-#   2- then do an infinite loop that needs to periodically call the device
-#   implementations of each sensor (give me your data) and publish the value on the channel that is in the instance of
-#   the ontology to the MQTT broker, the interval has to be configurable (1 second for a start should be enough).
-#   You need to take care of loading the module (the device implementation) then look into it for the corresponding
-#   function
-#   3- this calls the function and pack the return value that you get from it to a somewhat meaningful message (could be the value).
-
 #---------------EXTRACT-SENSOR-INFORMATION-FROM-ONTOLOGY------------------------
-#search in mqtt_requests for values to invoke implementation
+#search in parameter list for name of sensors & function names for measurement retrieval
+def extractSensorInfo():
+    for parameter in parameter_registery:
+        if parameter == 'temperature':
+            investigate = parameter_registery[parameter]
+            for invObj in investigate:
+                for obj in invObj:
+                    if obj == 'device':
+                        tSensor = invObj[obj]
+                    if obj == 'name':
+                        tFunction = invObj[obj]
+        if parameter == 'light':
+            investigate = parameter_registery[parameter]
+            for invObj in investigate:
+                for obj in invObj:
+                    if obj == 'device':
+                        lSensor = invObj[obj]
+                    if obj == 'name':
+                        lFunction = invObj[obj]
+        if parameter == 'humidity':
+            investigate = parameter_registery[parameter]
+            for invObj in investigate:
+                for obj in invObj:
+                    if obj == 'device':
+                        hSensor = invObj[obj]
+                    if obj == 'name':
+                        hFunction = invObj[obj]
+
+    # return values are in JSON format, need to get translated to strings for being transferable with mqtt.push()
+    def buildMQTTMessage(retVal):
+        for keys in retVal:
+            if (keys == 'text' or keys == 'light-value'):
+                answer = retVal[keys]
+            if keys == 'unit':
+                answer+= ' ' + retVal[keys]
+        return answer
+
+    # use the found information to call the device hub -> invoke the functions on the device(& return the value)
+    tSensorValue = buildMQTTMessage(hub.invoke_implementation(tFunction, parameter_registery['temperature'],
+                                                              defaultArgs(qos), tSensor))
+    hSensorValue = buildMQTTMessage(hub.invoke_implementation(hFunction, parameter_registery['humidity'],
+                                                              defaultArgs(qos), hSensor))
+    lSensorValue = buildMQTTMessage(hub.invoke_implementation(lFunction, parameter_registery['light'],
+                                                              defaultArgs(qos), lSensor))
+
+    # send the measured values to the broker endpoint other clients can access
+    mqtt.publish('temperature', tSensorValue)
+    mqtt.publish('humidity', hSensorValue)
+    mqtt.publish('light', lSensorValue)
 #-------------------------------------------------------------------------------
 
-#PERIODICALLY-CALL-THE-getValue()-FUNCTIONS-&-PUBLISH-THE-RESPONSE-TO-SUBSCRIBERS
- #infinite loop through mqtt_request{
- #   each 1s call:
- #       if devicename == 'http://vsr.informatik.tu-chemnitz.de/projects/growth/samples/icwe2019#LightM':
- #           answer = hub.invoke_implementation('get_light_instensity', parameter_registery['light'], defaultArgs(qos), device)
- #           mqtt.publish('light', answer)
+# Timer class for constantly updating the sensor information
+class RepeatTimer(Timer):
+    def run(self):
+        while not self.finished.wait(self.interval):
+            self.function(*self.args, **self.kwargs)
 
- #       if devicename == 'http://vsr.informatik.tu-chemnitz.de/projects/growth/samples/icwe2019#HumidityM':
- #           answer = hub.invoke_implementation('get_humidity', parameter_registery['humidity'], defaultArgs(qos), device)
- #           mqtt.publish('humidity', answer)
+# start sensor thread
+timer = RepeatTimer(1, extractSensorInfo)
+timer.start()
 
- #       if devicename == 'http://vsr.informatik.tu-chemnitz.de/projects/growth/samples/icwe2019#TemperatureM':
- #           answer = hub.invoke_implementation('get_humidity', parameter_registery['temperature'], defaultArgs(qos), device)
- #           mqtt.publish('temperature', answer)
-#}
-#----------------------------------------------------------------------------------
-
-#----------------------------SHOW-THE-CURRENT-SENSOR-VALUE-------------------------
+#----------CALLBACKS-FOR-SUBSCRIBER-TO-SENSOR-VALUES-----------------------------
 @subscribe('light')
 def callback12(message):
-    light = message
-    print('light measurement proceeded!\ncurrent luminosity: ' + str(light) + 'lumen')
+    print('light measurement proceeded!\ncurrent luminosity: ' + str(message))
 
 @subscribe('temperature')
 def callback13(message):
-    temperature = message
-    print('temperature measurement proceeded!\ncurrent temperature: ' + str(temperature) + '° celsius')
+    print('temperature measurement proceeded!\ncurrent temperature: ' + str(message))
 
 @subscribe('humidity')
 def callback14(message):
-    humidity = message
-    print('humidity measurement proceeded!\ncurrent humidity level: ' + str(humidity) + '%')
+    print('humidity measurement proceeded!\ncurrent humidity level: ' + str(message))
 # ------------------------------------------------------------------------------------
 #-----------------------------------------------------------------------------------------------------------------------
 
@@ -504,6 +531,7 @@ def invoke_callbacks(matching_keys, parameters, payload):
         for callback in registry[topic]:
             callback(payload, **parameters)
 
+# subscribe to all available topics of ontology
 def subscribe_light():
     mqtt.subscribe('light/1/on')
     mqtt.subscribe('light/1/off')
@@ -523,11 +551,6 @@ def subscribe_tv():
     mqtt.subscribe('tv/4/on')
     mqtt.subscribe('tv/4/off')
 #-----------------------------------------------------------------------------------------------------------------------
-
-
-def subscribe():
-    for topic in registry.keys():
-        mqtt.subscribe(topic_variables.sub('+', topic))
 
 # @mqtt.on_log()
 # def handle_logging(client, userdata, level, buf):
