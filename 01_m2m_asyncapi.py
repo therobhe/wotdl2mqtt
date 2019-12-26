@@ -1,3 +1,4 @@
+import item as item
 import rdflib
 import yaml
 import json
@@ -72,18 +73,18 @@ resources = defaultdict(list)
 
 # fill resource dict -> actuators
 for device, devicename, mqtt_request, name, message, endpoint, sub in mqtt_subs:
-    print('Device: %s MQTTReq: %s FName: %s Message: %s Endpoint: %s SubscribesTo: %s' % (device, mqtt_request, name,  message, endpoint, sub))
+    print('Device: %s Insance: %s functionName: %s  subscribesTo: %s Endpoint: %s  Message: %s' % (device, mqtt_request, name,  sub, endpoint, message))
     resources[str(sub)].append({'device' : devicename, 'name' : name, 'message' : message, 'subscribesTo': sub})
 
 # fill resource dict -> sensors
 for device, devicename, mqtt_request, name, message, endpoint, pub in mqtt_pubs:
-    print('Device: %s MQTTReq: %s FName: %s Message: %s Endpoint: %s PublishesOn: %s' % (device, mqtt_request, name,  message, endpoint, pub))
+    print('Device: %s Instance: %s functionName: %s PublishesOn: %s Endpoint: %s Message: %s' % (device, mqtt_request, name,  pub, endpoint, message))
     resources[str(pub)].append({'device' : devicename, 'name' : name, 'message' : message, 'publishesOn': pub})
 
 # build api body - loop through resources-entries and extract required parameter
 for resource in resources:
+    # for parsing sensor payload
     path_params = [p for p in resource.split('/')[1:] if p[0] == '{' and p[-1] == '}']
-
     # for accessing objects within resource
     requests = resources[resource]
     # storing room for evalating if resource entry is publisher or subscriber
@@ -92,6 +93,16 @@ for resource in resources:
     content = {}
     # storing room for message information of sensor
     sensorBody = {}
+
+    d1 = {}
+    d2 = {}
+    d3 = {}
+    props = {}
+
+    d1['sentAt'] = {'type':'string', 'format': 'date-time', 'description': 'Date and time when the message was sent'}
+    d2['humidity'] = {'type':'integer', 'minimum':'0', 'description':'Humidity measured as percentage'}
+    d3['id'] = {'type':'integer', 'minimum':'-10', 'description':'Id of the Humidity sensor'}
+
 
     # loop through parameter list of resource and build api structure
     for request in requests:
@@ -103,43 +114,35 @@ for resource in resources:
 
         parameters = []
         add_parameters = False
-
-        #if request['query_params'] != '':
-        #    query_params = [q.split('=')[0] for q in request['query_params'].split('&')]
-        #    parameters += [{'in': 'query', 'name': p, 'schema': {'type': 'string'}} for p in query_params]
-        #    add_parameters = True
-
-        #if len(path_params) > 0:
-        #    parameters += [{'in': 'path', 'name': p[1:-1], 'required': True, 'schema': {'type': 'string'}} for p in path_params]
-        #    add_parameters = True
-
-        #if add_parameters:
-        #    entry['parameters'] = parameters
-
-        #if request['body'] != None:
-        #    entry['requestBody'] = yaml.load(str(request['body']))
-
-
-        #if request['message'] != None:
-        #    entry['message'] = yaml.load((str(request['message'])))
-
-
+        print('REQUEST AN MESSAGE: ' + request['message'])
 
         # loop through values of a resource's parameter list
-        for endp in request:
+        for param in request:
+            if str(param) == 'message':
+                messtring = request[param]
+
+                sensorBody['id'] = {'type':'EXTRACTION FROM STRING', 'minimum':'EXTRACTED FROM STRING', 'description':'EXTRACTED FROM ID'}
+                sensorBody['sentAt'] = {'type': 'EXTRACTION FROM STRING', 'format': 'EXTRACTED FROM STRING','description': 'EXTRACTED FROM ID'}
+                sensorBody['humidity'] = {'type': 'EXTRACTION FROM STRING', 'minimum': 'EXTRACTED FROM STRING','description': 'EXTRACTED FROM ID'}
+                sensorBody['light'] = {'type': 'EXTRACTION FROM STRING', 'minimum': 'EXTRACTED FROM STRING','description': 'EXTRACTED FROM ID'}
+                sensorBody['temperature'] = {'type': 'EXTRACTION FROM STRING', 'minimum': 'EXTRACTED FROM STRING','description': 'EXTRACTED FROM ID'}
+
+                # remove spaces from string, build dictionary from list when ':' seperation
+                # unmodified string
+                print('MESSAGE AS STRING: ' + messtring)
+
             # determine the role of the resource
-            if str(endp) == 'subscribesTo':
+            if str(param) == 'subscribesTo':
                 pubOrSub = 'subscribe'
                 # enhance response body
                 content['payload'] = {'type': 'object'}
-            elif str(endp) == 'publishesOn':
+            elif str(param) == 'publishesOn':
                 pubOrSub = 'publish'
-                content['payload'] = sensorBody;
-
+                content['payload'] = {'type':'object', 'properties':sensorBody}
         # add the message description to the entry definition
         entry['message'] = content
         # add the message, operationId, summary definition to the subscribe/publish
-        methods[pubOrSub] = entry
+        methods[str(pubOrSub)] = entry
         # add the subscribe/publish + the message etc attachment to the channel resource
         channels[str(resource)] = methods
 
@@ -168,8 +171,7 @@ api_name = 'wot_api'
 with open('config.json', 'w') as configfile:
     json.dump({'packageName': api_name, 'defaultController': api_name + '_controller', 'serverPort': port}, fp=configfile)
 
-# flask integration
-# ...?
+
 with fileinput.FileInput('02_m2t_openapi_flask.sh', inplace=True) as m2tfile:
     for line in m2tfile:
         if line[:5] == 'PORT=':

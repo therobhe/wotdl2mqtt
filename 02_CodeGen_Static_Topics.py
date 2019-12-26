@@ -4,18 +4,13 @@
 # (c) Robert Heinemann 2019
 
 from collections import defaultdict
-import eventlet
-import json
 import rdflib
 from rdflib import OWL, RDFS, Namespace
 from flask import Flask, render_template
 from flask_mqtt import Mqtt
 from flask_socketio import SocketIO
 import re
-import importlib
 import hub
-
-# eventlet.monkey_patch()
 
 
 #--------------------------IMPORT-ONTOLOGY-+-EXTRACT-MQTTCOMMUNICATION-INFORMATION--------------------------------------
@@ -26,31 +21,55 @@ WOTDL = Namespace('http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wot
 instance = rdflib.Graph()
 instance.parse(IN, format='n3')
 
-# extract mqttCommunicaiton information
-find_mqtt_requests = """SELECT ?d ?device ?mqtt_request ?name ?subscribe ?publish ?endpoint ?message
+# extract mqttCommunicaiton information for subscriptions
+find_mqtt_subs = """SELECT ?d ?device ?mqtt_request ?name ?message ?endpoint ?sub  
        WHERE {
             ?d a ?device_subclass.
             ?device_subclass a owl:Class.
             ?device_subclass rdfs:subClassOf wotdl:Device.
             OPTIONAL{ ?d wotdl:name ?device }
-            ?mqtt_request a wotdl:MqttCommunication .
+            ?mqtt_request a wotdl:MqttCommunication.           
             OPTIONAL{?mqtt_request wotdl:name ?name}
-            ?mqtt_request wotdl:subscribesTo ?subscribe .
-            ?mqtt_request wotdl:publishesOn ?publish .
-            ?mqtt_request wotdl:mqttEndpoint ?endpoint . 
+            ?mqtt_request wotdl:mqttMessage ?message. 
+            ?mqtt_request wotdl:mqttEndpoint ?endpoint.
+            ?mqtt_request wotdl:subscribesTo ?sub. 
             OPTIONAL{?mqtt_request wotdl:mqttMessage ?message}
             {
                 ?d wotdl:hasTransition ?t.
                 ?t wotdl:hasActuation ?mqtt_request.
             } 
-            UNION 
-            { 
-                ?d wotdl:hasMeasurement ?mqtt_request.                          
+            UNION
+            {
+                ?d wotdl:hasMeasurement ?mqtt_request.    
             }
         }
 """
-# store query findings in mqtt_requests
-mqtt_requests = instance.query(find_mqtt_requests, initNs={'wotdl': WOTDL, 'rdfs': RDFS, 'owl': OWL})
+# extract mqttCommunicaiton information for publishes
+find_mqtt_pubs = """SELECT ?d ?device ?mqtt_request ?name ?message ?endpoint ?pub  
+       WHERE {
+            ?d a ?device_subclass.
+            ?device_subclass a owl:Class.
+            ?device_subclass rdfs:subClassOf wotdl:Device.
+            OPTIONAL{ ?d wotdl:name ?device }
+            ?mqtt_request a wotdl:MqttCommunication.           
+            OPTIONAL{?mqtt_request wotdl:name ?name}
+            ?mqtt_request wotdl:mqttMessage ?message. 
+            ?mqtt_request wotdl:mqttEndpoint ?endpoint.
+            ?mqtt_request wotdl:publishesOn ?pub. 
+            OPTIONAL{?mqtt_request wotdl:mqttMessage ?message}
+            {
+                ?d wotdl:hasTransition ?t.
+                ?t wotdl:hasActuation ?mqtt_request.
+            } 
+            UNION
+            {
+                ?d wotdl:hasMeasurement ?mqtt_request.    
+            }
+        }
+"""
+# invoke SPARQL Query
+mqtt_subs = instance.query(find_mqtt_subs, initNs={'wotdl': WOTDL, 'rdfs': RDFS, 'owl': OWL})
+mqtt_pubs = instance.query(find_mqtt_pubs, initNs={'wotdl': WOTDL, 'rdfs': RDFS, 'owl': OWL})
 #-----------------------------------------------------------------------------------------------------------------------
 
 
@@ -65,16 +84,12 @@ parameter_registery = defaultdict(list)
 
 #--------------------------------BUILD-PARAMETER-LIST-FROM-ONTOLOGY-INFORMATION-----------------------------------------
 # connect endpoint : device parameter -> param_registery
-for device, devicename, mqtt_request, name, subscribe, publish, endpoint, message in mqtt_requests:
-    print('%s %s %s %s %s %s' % (device, mqtt_request, name, subscribe, publish, endpoint, message))
-    # add parameter to endpoint
-    parameter_registery[endpoint].append(
-        {'subscribesTo' : subscribe.lower(), 'publishesOn' : publish.lower(), 'device' : devicename, 'name' : name,
-         'message' : message})
-#-----------------------------------------------------------------------------------------------------------------------
+for device, devicename, mqtt_request, name, message, endpoint, sub in mqtt_subs:
+    parameter_registery[str(sub)].append({'device' : devicename, 'name' : name, 'message' : message, 'subscribesTo': sub})
 
-#ToDO: REMOVE NL
-print('Parameter List for Channel Light: ' + str(parameter_registery['light/1/on']))
+for device, devicename, mqtt_request, name, message, endpoint, pub in mqtt_pubs:
+    parameter_registery[str(pub)].append({'device' : devicename, 'name' : name, 'message' : message, 'publishesOn': pub})
+#-----------------------------------------------------------------------------------------------------------------------
 
 #-----------------------SETTING-UP-THE-BROKER-BACKEND-------------------------------------------------------------------
 # initialize flask-mqtt
@@ -92,7 +107,7 @@ app.config['MQTT_PASSWORD'] = ''
 app.config['MQTT_KEEPALIVE'] = 5
 app.config['MQTT_TLS_ENABLED'] = False
 
-# Parameters for SSL enabled
+# Parameters for SSL disabled
 # app.config['MQTT_BROKER_PORT'] = 8883
 # app.config['MQTT_TLS_ENABLED'] = True
 # app.config['MQTT_TLS_INSECURE'] = True
@@ -140,24 +155,19 @@ def subscribe(topic):
 # -> actuators: subscribe to all endpoints that are related to the device itself (e.g lamp -> on/off/set functions)
 @mqtt.on_connect()
 def handle_connect(client, userdata, flags, rc):
-    # check if connecting device is actuator -> yes? check what device type (tv, lamp...) it is and let it subscribe to
-    # corresponding functions
-    # therefore: actuators 'subscribesTo' values matches the endpoint, otherwise it is a sensor(no subscribesTo)
-    # cmp for actuator check, dev as param for checking which device is active
-    for endpoint in parameter_registery:                #endpoint:[{object}]
-        for object in parameter_registery[endpoint]:    #object:{key1:param1, key2:param2...}
-            for param in object:                        #key:param
-                if(str(param) == 'subscribesTo'):
-                    cmp = object[param]
-                if (str(param) == 'device'):
+    # check connecting devices, assign device specific subscription
+    for endpoint in parameter_registery:
+        for object in parameter_registery[endpoint]:
+            for param in object:
+                if str(param) == 'device':
                     dev = object[param]
-                    if((str(dev) == 'samsung_tv') and (cmp == endpoint)):
+                    if str(dev) == 'samsung_tv':
                         subscribe_tv()
-                    if((str(dev) == 'dc_motor_fan') and (cmp == endpoint)):
+                    if str(dev) == 'dc_motor_fan':
                         subscribe_fan()
-                    if((str(dev) == 'relay_heating') and (cmp == endpoint)):
+                    if str(dev) == 'relay_heating':
                         subscribe_heat()
-                    if((str(dev) == 'philipshue') and (cmp == endpoint)):
+                    if str(dev) == 'philipshue':
                         subscribe_light()
     #subscribe()
 #-----------------------------------------------------------------------------------------------------------------------
@@ -170,100 +180,236 @@ def handle_connect(client, userdata, flags, rc):
 # phil hue on -> hub needs to call switch_lamp_on() in philipshue.py
 @subscribe('light/1/on')
 def callback1(message):
-    print('Callback 1: ' + message)
-    for param in parameter_registery['light/1/on']:
-        devname = param[device]
-    # ToDO: is that style correct? def invoke_implementation(function_name, params, kwargs, device)
-    return hub.invoke_implementation('switch_lamp_on', parameter_registery['light/1/on'], defaultArgs(qos), devname)
+    print('Callback 1 ACCESSED: ' + message)
+    # search parameters in query: which devices links to the endpoint? + which function is triggered on this endpoint
+    # parameter list of endpoint
+    parameterList = parameter_registery['light/1/on']
+    for parameter in parameter_registery:
+        if parameter == 'light/1/on':
+            investigate = parameter_registery[parameter]
+            for invObj in investigate:
+                for obj in invObj:
+                    if obj == 'device':
+                        dev = invObj[obj]
+                        print('DEVICE:' + dev)
+                    if obj == 'name':
+                        functionname = invObj[obj]
+                        print('FUNCTIONNAME: ' + functionname)
+    # call device implementation hub, search for function on device and invoke it
+    return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
 
 # phil hue off -> hub needs to call switch_lamp_off() in philipshue.py
 @subscribe('light/1/off')
 def callback2(message):
-    # ToDO: call switch_off_lamp
-    print('Callback 2: ' + message)
-    for param in parameter_registery['light/1/off']:
-        devname = param[device]
-    return hub.invoke_implementation('switch_lamp_off', parameter_registery['light/1/off'], defaultArgs(qos), devname)
+    # search parameters in query: which devices links to the endpoint? + which function is triggered on this endpoint
+    # parameter list of endpoint
+    print('Callback 2 ACCESSED: ' + message)
+    parameterList = parameter_registery['light/1/off']
+    for parameter in parameter_registery:
+        if parameter == 'light/1/off':
+            investigate = parameter_registery[parameter]
+            for invObj in investigate:
+                for obj in invObj:
+                    if obj == 'device':
+                        dev = invObj[obj]
+                        print('DEVICE:' + dev)
+                    if obj == 'name':
+                        functionname = invObj[obj]
+                        print('FUNCTIONNAME: ' + functionname)
+    # call device implementation hub, search for function on device and invoke it
+    return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
 
 #------------------HEATING-ACTUATIONS----------------------------
 # heating relay on -> hub needs to call heating_on() in heating_relay.py
 @subscribe('heating/2/on')
 def callback3(message):
-    # ToDO: heating_on in relay_heating
-    print('Callback 3: ' + message)
-    for param in parameter_registery['heating/2/on']:
-        devname = param[device]
-    return hub.invoke_implementation('heating_on', parameter_registery['heating/2/on'], defaultArgs(qos), devname)
+    print('Callback 3 ACCESSED: ' + message)
+    # search parameters in query: which devices links to the endpoint? + which function is triggered on this endpoint
+    # parameter list of endpoint
+    parameterList = parameter_registery['heating/2/on']
+    for parameter in parameter_registery:
+        if parameter == 'heating/2/on':
+            investigate = parameter_registery[parameter]
+            for invObj in investigate:
+                for obj in invObj:
+                    if obj == 'device':
+                        dev = invObj[obj]
+                        print('DEVICE:' + dev)
+                    if obj == 'name':
+                        functionname = invObj[obj]
+                        print('FUNCTIONNAME: ' + functionname)
+    # call device implementation hub, search for function on device and invoke it
+    return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
 
 # heating relay off -> hub needs to call heating_off() in heating_relay.py
 @subscribe('heating/2/off')
 def callback4(message):
-    # ToDO: call heating_off in relay_heating
-    print('Callback 4: ' + message)
-    for param in parameter_registery['heating/2/off']:
-        devname = param[device]
-    return hub.invoke_implementation('heating_off', parameter_registery['heating/2/off'], defaultArgs(qos), devname)
+    print('Callback 4 ACCESSED: ' + message)
+    # search parameters in query: which devices links to the endpoint? + which function is triggered on this endpoint
+    # parameter list of endpoint
+    parameterList = parameter_registery['heating/2/off']
+    for parameter in parameter_registery:
+        if parameter == 'heating/2/off':
+            investigate = parameter_registery[parameter]
+            for invObj in investigate:
+                for obj in invObj:
+                    if obj == 'device':
+                        dev = invObj[obj]
+                        print('DEVICE:' + dev)
+                    if obj == 'name':
+                        functionname = invObj[obj]
+                        print('FUNCTIONNAME: ' + functionname)
+    # call device implementation hub, search for function on device and invoke it
+    return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
 
 #--------------FAN-ACTUATIONS----------------
 # turn fan off -> hub needs to call fan_turn_off in dc_motor_fan.py
 @subscribe('fan/3/off')
 def callback5(message):
-    print('Callback 5: ' + message)
-    for param in parameter_registery['fan/3/off']:
-        devname = param[device]
-    return hub.invoke_implementation('fan_turn_off', parameter_registery['fan/3/off'], defaultArgs(qos), devname)
+    print('Callback 5 ACCESSED: ' + message)
+    parameterList = parameter_registery['fan/3/off']
+    for parameter in parameter_registery:
+        if parameter == 'fan/3/off':
+            investigate = parameter_registery[parameter]
+            for invObj in investigate:
+                for obj in invObj:
+                    if obj == 'device':
+                        dev = invObj[obj]
+                        print('DEVICE:' + dev)
+                    if obj == 'name':
+                        functionname = invObj[obj]
+                        print('FUNCTIONNAME: ' + functionname)
+    # call device implementation hub, search for function on device and invoke it
+    return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
 
 # set speed -> hub needs to call fan_set(body) in dc_motor_fan.py
-@subscribe('fan/3/set')
+@subscribe('fan/3/setFanSpeed')
 def callback6(message):
-    print('Callback 6: ' + message)
-    for param in parameter_registery['fan/3/set']:
-        devname = param[device]
-    return hub.invoke_implementation('fan_set', parameter_registery['fan/3/set'], defaultArgs(qos), devname)
+    print('Callback 6 ACCESSED: ' + message)
+    # search parameters in query: which devices links to the endpoint? + which function is triggered on this endpoint
+    # parameter list of endpoint
+    parameterList = parameter_registery['fan/3/setFanSpeed']
+    for parameter in parameter_registery:
+        if parameter == 'fan/3/setFanSpeed':
+            investigate = parameter_registery[parameter]
+            for invObj in investigate:
+                for obj in invObj:
+                    if obj == 'device':
+                        dev = invObj[obj]
+                        print('DEVICE:' + dev)
+                    if obj == 'name':
+                        functionname = invObj[obj]
+                        print('FUNCTIONNAME: ' + functionname)
+    # call device implementation hub, search for function on device and invoke it
+    return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
 
 # speed up -> hub needs to call increase_fan_speed() in dc_motor_fan.py
-@subscribe('fan/3/increase')
+@subscribe('fan/3/increaseSpeed')
 def callback7(message):
-    print('Callback 7: ' + message)
-    for param in parameter_registery['fan/3/increase']:
-        devname = param[device]
-    return hub.invoke_implementation('increase_fan_speed', parameter_registery['fan/3/increase'], defaultArgs(qos), devname)
+    print('Callback 7 ACCESSED: ' + message)
+    # search parameters in query: which devices links to the endpoint? + which function is triggered on this endpoint
+    # parameter list of endpoint
+    parameterList = parameter_registery['fan/3/increaseSpeed']
+    for parameter in parameter_registery:
+        if parameter == 'fan/3/increaseSpeed':
+            investigate = parameter_registery[parameter]
+            for invObj in investigate:
+                for obj in invObj:
+                    if obj == 'device':
+                        dev = invObj[obj]
+                        print('DEVICE:' + dev)
+                    if obj == 'name':
+                        functionname = invObj[obj]
+                        print('FUNCTIONNAME: ' + functionname)
+    # call device implementation hub, search for function on device and invoke it
+    return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
 
 # slow down fan -> hub needs to call decrease_fan_speed() in dc_motor_fan.py
-@subscribe('fan/3/decrease')
+@subscribe('fan/3/decreaseSpeed')
 def callback8(message):
-    print('Callback 8: ' + message)
-    for param in parameter_registery['fan/3/decrease']:
-        devname = param[device]
-    return hub.invoke_implementation('decrease_fan_speed', parameter_registery['fan/3/decrease'], defaultArgs(qos), devname)
+    print('Callback 8 ACCESSED: ' + message)
+    # search parameters in query: which devices links to the endpoint? + which function is triggered on this endpoint
+    # parameter list of endpoint
+    parameterList = parameter_registery['fan/3/decreaseSpeed']
+    for parameter in parameter_registery:
+        if parameter == 'fan/3/decreaseSpeed':
+            investigate = parameter_registery[parameter]
+            for invObj in investigate:
+                for obj in invObj:
+                    if obj == 'device':
+                        dev = invObj[obj]
+                        print('DEVICE:' + dev)
+                    if obj == 'name':
+                        functionname = invObj[obj]
+                        print('FUNCTIONNAME: ' + functionname)
+    # call device implementation hub, search for function on device and invoke it
+    return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
 
 #--------------TV-ACTUATIONS----------------
 # tv on -> hub needs to call switch_on_tv() in samsung_tv.py
 @subscribe('tv/4/on')
 def callback9(message):
-    print('Callback 9: ' + message)
-    for param in parameter_registery['tv/4/on']:
-        devname = param[device]
-    return hub.invoke_implementation('switch_tv_on', parameter_registery['tv/4/on'], defaultArgs(qos), devname)
+    print('Callback 9 ACCESSED: ' + message)
+    # search parameters in query: which devices links to the endpoint? + which function is triggered on this endpoint
+    # parameter list of endpoint
+    parameterList = parameter_registery['tv/4/on']
+    for parameter in parameter_registery:
+        if parameter == 'tv/4/on':
+            investigate = parameter_registery[parameter]
+            for invObj in investigate:
+                for obj in invObj:
+                    if obj == 'device':
+                        dev = invObj[obj]
+                        print('DEVICE:' + dev)
+                    if obj == 'name':
+                        functionname = invObj[obj]
+                        print('FUNCTIONNAME: ' + functionname)
+    # call device implementation hub, search for function on device and invoke it
+    return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
 
 # tv off -> hub needs to call switch_off_tv() in samsung_tv.py
 @subscribe('tv/4/off')
 def callback10(message):
-    print('Callback 10: ' + message)
-    for param in parameter_registery['tv/4/off']:
-        devname = param[device]
-    return hub.invoke_implementation('switch_tv_off', parameter_registery['tv/4/off'], defaultArgs(qos), devname)
+    print('Callback 10 ACCESSED: ' + message)
+    # search parameters in query: which devices links to the endpoint? + which function is triggered on this endpoint
+    # parameter list of endpoint
+    parameterList = parameter_registery['tv/4/off']
+    for parameter in parameter_registery:
+        if parameter == 'tv/4/off':
+            investigate = parameter_registery[parameter]
+            for invObj in investigate:
+                for obj in invObj:
+                    if obj == 'device':
+                        dev = invObj[obj]
+                        print('DEVICE:' + dev)
+                    if obj == 'name':
+                        functionname = invObj[obj]
+                        print('FUNCTIONNAME: ' + functionname)
+    # call device implementation hub, search for function on device and invoke it
+    return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
 #-----------------------------------------------------------------
 
 #--------------THERMOSTAT-ACTUATIONS------------------------------
 # set thermostat temp -> hub needs to call thermostat_set(target_temp) in thermostat.py
 @subscribe('thermostat/5/setTemperature')
 def callback11(message):
-    # ToDO: call thermostat_set in thermostat
-    print('Callback 11: ' + message)
-    for param in parameter_registery['thermostat/5/setTemperature']:
-        devname = param[device]
-    return hub.invoke_implementation('thermostat_set', parameter_registery['heating/2/setTemperature'], defaultArgs(qos), devname)
+    print('Callback 11 ACCESSED: ' + message)
+    # search parameters in query: which devices links to the endpoint? + which function is triggered on this endpoint
+    # parameter list of endpoint
+    parameterList = parameter_registery['thermostat/5/setTemperature']
+    for parameter in parameter_registery:
+        if parameter == 'thermostat/5/setTemperature':
+            investigate = parameter_registery[parameter]
+            for invObj in investigate:
+                for obj in invObj:
+                    if obj == 'device':
+                        dev = invObj[obj]
+                        print('DEVICE:' + dev)
+                    if obj == 'name':
+                        functionname = invObj[obj]
+                        print('FUNCTIONNAME: ' + functionname)
+    # call device implementation hub, search for function on device and invoke it
+    return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
 #-----------------------------------------------------------------
 
 
@@ -362,16 +508,16 @@ def subscribe_light():
     mqtt.subscribe('light/1/on')
     mqtt.subscribe('light/1/off')
 
-def subscribe_fan():
+def subscribe_heat():
     mqtt.subscribe('heating/2/on')
     mqtt.subscribe('heating/2/off')
     mqtt.subscribe('heating/2/setTemperature')
 
-def subscribe_heat():
-    mqtt.subscribe('fan/3/set')
+def subscribe_fan():
+    mqtt.subscribe('fan/3/setFanSpeed')
     mqtt.subscribe('fan/3/off')
-    mqtt.subscribe('fan/3/increase')
-    mqtt.subscribe('fan/3/decrease')
+    mqtt.subscribe('fan/3/increaseSpeed')
+    mqtt.subscribe('fan/3/decreaseSpeed')
 
 def subscribe_tv():
     mqtt.subscribe('tv/4/on')
@@ -379,9 +525,9 @@ def subscribe_tv():
 #-----------------------------------------------------------------------------------------------------------------------
 
 
-#def subscribe():
-#    for topic in registry.keys():
-#        mqtt.subscribe(topic_variables.sub('+', topic))
+def subscribe():
+    for topic in registry.keys():
+        mqtt.subscribe(topic_variables.sub('+', topic))
 
 # @mqtt.on_log()
 # def handle_logging(client, userdata, level, buf):
