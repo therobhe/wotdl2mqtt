@@ -1,4 +1,9 @@
-import item as item
+#--------------------Python AsyncAPI Builder for MQTTWoTDL-Ontology-----------------------------------------------------
+# steps 3-5 of the WoTDL2MQTT toolchain - creates AsyncAPI specification through SPARQL querying the MQTTWoTDL first for
+# actuators and measurements, further for MQTT Communicaiton information
+# requirement: link to valid ontology instance within 'IN' variable (line 16)
+# (c) Robert Heinemann 2019
+
 import rdflib
 import yaml
 import json
