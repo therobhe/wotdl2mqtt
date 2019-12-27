@@ -8,16 +8,14 @@ import rdflib
 import yaml
 import json
 import fileinput
-
 from rdflib import OWL, RDFS, Namespace
 from collections import defaultdict
 
 # import mqtt enhanced ontology defined in mqttwotdl.ttl
 IN = 'mqttwotdl.ttl'
 WOTDL = Namespace('http://vsr.informatik.tu-chemnitz.de/projects/2019/growth/wotdl#')
-
 instance = rdflib.Graph()
-instance.parse(IN, format='n3')
+instance.parse('mqttwotdl.ttl', format='n3')
 
 # extract mqttCommunicaiton information for subscriptions
 find_mqtt_subs = """SELECT ?d ?device ?mqtt_request ?name ?message ?endpoint ?sub  
@@ -72,7 +70,6 @@ channels = defaultdict(dict)
 mqtt_subs = instance.query(find_mqtt_subs, initNs={'wotdl': WOTDL, 'rdfs': RDFS, 'owl': OWL})
 mqtt_pubs = instance.query(find_mqtt_pubs, initNs={'wotdl': WOTDL, 'rdfs': RDFS, 'owl': OWL})
 
-
 # resources dictionary for describing api tree-structure based on key-values: {sub/pub-endpoint: pub/sub-indicator...}
 resources = defaultdict(list)
 
@@ -99,16 +96,6 @@ for resource in resources:
     # storing room for message information of sensor
     sensorBody = {}
 
-    d1 = {}
-    d2 = {}
-    d3 = {}
-    props = {}
-
-    d1['sentAt'] = {'type':'string', 'format': 'date-time', 'description': 'Date and time when the message was sent'}
-    d2['humidity'] = {'type':'integer', 'minimum':'0', 'description':'Humidity measured as percentage'}
-    d3['id'] = {'type':'integer', 'minimum':'-10', 'description':'Id of the Humidity sensor'}
-
-
     # loop through parameter list of resource and build api structure
     for request in requests:
         # entry => first descriptions after method determination
@@ -116,25 +103,34 @@ for resource in resources:
             'operationId': str(request['name']),
             'summary': str(request['name']) + ' request on device ' + str(request['device'])
         }
-
-        parameters = []
-        add_parameters = False
-        print('REQUEST AN MESSAGE: ' + request['message'])
-
         # loop through values of a resource's parameter list
         for param in request:
             if str(param) == 'message':
-                messtring = request[param]
+                # sensor body construction
+                if str(resource) == 'humidity':
+                    sensorBody['humidity'] = {'type': 'integer', 'minimum': 0,
+                                              'description': 'Humidity measured as percentage'}
+                    sensorBody['id'] = {'type': 'integer', 'minimum': -10,
+                                                'description':'Id of the humidity sensor'}
+                    sensorBody['sentAt'] = {'type': 'object', 'format': 'date-time',
+                                        'description':'Date and time when the message was sent'}
 
-                sensorBody['id'] = {'type':'EXTRACTION FROM STRING', 'minimum':'EXTRACTED FROM STRING', 'description':'EXTRACTED FROM ID'}
-                sensorBody['sentAt'] = {'type': 'EXTRACTION FROM STRING', 'format': 'EXTRACTED FROM STRING','description': 'EXTRACTED FROM ID'}
-                sensorBody['humidity'] = {'type': 'EXTRACTION FROM STRING', 'minimum': 'EXTRACTED FROM STRING','description': 'EXTRACTED FROM ID'}
-                sensorBody['light'] = {'type': 'EXTRACTION FROM STRING', 'minimum': 'EXTRACTED FROM STRING','description': 'EXTRACTED FROM ID'}
-                sensorBody['temperature'] = {'type': 'EXTRACTION FROM STRING', 'minimum': 'EXTRACTED FROM STRING','description': 'EXTRACTED FROM ID'}
+                if str(resource) == 'light':
+                    sensorBody['light'] = {'type': 'integer', 'minimum': 0,
+                                              'description': 'light measured as lumen'}
+                    sensorBody['id'] = {'type': 'integer', 'minimum': -10,
+                                                'description':'Id of the humidity sensor'}
+                    sensorBody['sentAt'] = {'type': 'object', 'format': 'date-time',
+                                        'description':'Date and time when the message was sent'}
 
-                # remove spaces from string, build dictionary from list when ':' seperation
-                # unmodified string
-                print('MESSAGE AS STRING: ' + messtring)
+                if str(resource) == 'temperature':
+                    sensorBody['temperature'] = {'type': 'integer', 'minimum': 0,
+                                              'description': 'Temperature measured as celcuis'}
+                    sensorBody['id'] = {'type': 'integer', 'minimum': -10,
+                                                'description':'Id of the humidity sensor'}
+                    sensorBody['sentAt'] = {'type': 'object', 'format': 'date-time',
+                                        'description':'Date and time when the message was sent'}
+
 
             # determine the role of the resource
             if str(param) == 'subscribesTo':
@@ -144,6 +140,7 @@ for resource in resources:
             elif str(param) == 'publishesOn':
                 pubOrSub = 'publish'
                 content['payload'] = {'type':'object', 'properties':sensorBody}
+
         # add the message description to the entry definition
         entry['message'] = content
         # add the message, operationId, summary definition to the subscribe/publish
@@ -175,7 +172,6 @@ with open('asyncapi.yaml', 'w') as yamlfile:
 api_name = 'wot_api'
 with open('config.json', 'w') as configfile:
     json.dump({'packageName': api_name, 'defaultController': api_name + '_controller', 'serverPort': port}, fp=configfile)
-
 
 with fileinput.FileInput('02_m2t_openapi_flask.sh', inplace=True) as m2tfile:
     for line in m2tfile:
