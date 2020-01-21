@@ -3,16 +3,18 @@
 # requirement: a local broker instance needs to run in the background in order to run this program, & devices connected
 # (c) Robert Heinemann 2019
 
+import paho.mqtt.publish as publish
 import rdflib
 import re
 import hub
 from threading import Timer
 from collections import defaultdict
 from rdflib import OWL, RDFS, Namespace
-from flask import Flask, render_template
+from flask import Flask
 from flask_mqtt import Mqtt
 from flask_socketio import SocketIO
 
+import time
 #--------------------------IMPORT-ONTOLOGY-+-EXTRACT-MQTTCOMMUNICATION-INFORMATION--------------------------------------
 #import mqtt-ontology to extract device parameter for invoking implementations
 IN = 'mqttwotdl.ttl'
@@ -91,6 +93,7 @@ for device, devicename, mqtt_request, name, message, endpoint, pub in mqtt_pubs:
 #-----------------------------------------------------------------------------------------------------------------------
 
 #-----------------------SETTING-UP-THE-BROKER-BACKEND-------------------------------------------------------------------
+
 # initialize flask-mqtt
 app = Flask(__name__)
 
@@ -154,21 +157,28 @@ def subscribe(topic):
 # -> actuators: subscribe to all endpoints that are related to the device itself (e.g lamp -> on/off/set functions)
 @mqtt.on_connect()
 def handle_connect(client, userdata, flags, rc):
+    countTV = 0
+    countFan = 0
+    countLight = 0
+    countHeat = 0
     # check connecting devices, assign device specific subscription
     for endpoint in parameter_registery:
         for object in parameter_registery[endpoint]:
             for param in object:
                 if str(param) == 'device':
                     dev = object[param]
-                    if str(dev) == 'samsung_tv':
+                    if str(dev) == 'samsung_tv' and countTV == 0:
                         subscribe_tv()
-                    if str(dev) == 'dc_motor_fan':
+                        countTV+=1
+                    if str(dev) == 'dc_motor_fan' and countFan == 0:
                         subscribe_fan()
-                    if str(dev) == 'relay_heating':
+                        countFan+=1
+                    if str(dev) == 'relay_heating' and countHeat == 0:
                         subscribe_heat()
-                    if str(dev) == 'philipshue':
+                        countHeat+=1
+                    if str(dev) == 'philipshue' and countLight == 0:
                         subscribe_light()
-    #subscribe()
+                        countLight+=1
 #-----------------------------------------------------------------------------------------------------------------------
 
 
@@ -411,59 +421,57 @@ def callback11(message):
     return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
 #-----------------------------------------------------------------
 
-
-
 #------------------------------------------SENSOR-CALLBACKS-------------------------------------------------------------
 #---------------EXTRACT-SENSOR-INFORMATION-FROM-ONTOLOGY------------------------
 #search in parameter list for name of sensors & function names for measurement retrieval
-def extractSensorInfo():
-    for parameter in parameter_registery:
-        if parameter == 'temperature':
-            investigate = parameter_registery[parameter]
-            for invObj in investigate:
-                for obj in invObj:
-                    if obj == 'device':
-                        tSensor = invObj[obj]
-                    if obj == 'name':
-                        tFunction = invObj[obj]
-        if parameter == 'light':
-            investigate = parameter_registery[parameter]
-            for invObj in investigate:
-                for obj in invObj:
-                    if obj == 'device':
-                        lSensor = invObj[obj]
-                    if obj == 'name':
-                        lFunction = invObj[obj]
-        if parameter == 'humidity':
-            investigate = parameter_registery[parameter]
-            for invObj in investigate:
-                for obj in invObj:
-                    if obj == 'device':
-                        hSensor = invObj[obj]
-                    if obj == 'name':
-                        hFunction = invObj[obj]
+#def extractSensorInfo():
+#    for parameter in parameter_registery:
+#        if parameter == 'temperature':
+#            investigate = parameter_registery[parameter]
+#            for invObj in investigate:
+#                for obj in invObj:
+#                    if obj == 'device':
+#                        tSensor = invObj[obj]
+#                    if obj == 'name':
+#                        tFunction = invObj[obj]
+#        if parameter == 'light':
+#            investigate = parameter_registery[parameter]
+#            for invObj in investigate:
+#                for obj in invObj:
+#                    if obj == 'device':
+#                        lSensor = invObj[obj]
+#                    if obj == 'name':
+#                        lFunction = invObj[obj]
+#        if parameter == 'humidity':
+#            investigate = parameter_registery[parameter]
+#            for invObj in investigate:
+#                for obj in invObj:
+#                    if obj == 'device':
+#                        hSensor = invObj[obj]
+#                    if obj == 'name':
+#                        hFunction = invObj[obj]
 
     # return values are in JSON format, need to get translated to strings for being transferable with mqtt.push()
-    def buildMQTTMessage(retVal):
-        for keys in retVal:
-            if (keys == 'text' or keys == 'light-value'):
-                answer = retVal[keys]
-            if keys == 'unit':
-                answer+= ' ' + retVal[keys]
-        return answer
+#    def buildMQTTMessage(retVal):
+#        for keys in retVal:
+#            if (keys == 'text' or keys == 'light-value'):
+#                answer = retVal[keys]
+#            if keys == 'unit':
+#                answer+= ' ' + retVal[keys]
+#        return answer
 
     # use the found information to call the device hub -> invoke the functions on the device(& return the value)
-    tSensorValue = buildMQTTMessage(hub.invoke_implementation(tFunction, parameter_registery['temperature'],
-                                                              defaultArgs(qos), tSensor))
-    hSensorValue = buildMQTTMessage(hub.invoke_implementation(hFunction, parameter_registery['humidity'],
-                                                              defaultArgs(qos), hSensor))
-    lSensorValue = buildMQTTMessage(hub.invoke_implementation(lFunction, parameter_registery['light'],
-                                                              defaultArgs(qos), lSensor))
+#    tSensorValue = buildMQTTMessage(hub.invoke_implementation(tFunction, parameter_registery['temperature'],
+#                                                              defaultArgs(qos), tSensor))
+#    hSensorValue = buildMQTTMessage(hub.invoke_implementation(hFunction, parameter_registery['humidity'],
+#                                                              defaultArgs(qos), hSensor))
+#    lSensorValue = buildMQTTMessage(hub.invoke_implementation(lFunction, parameter_registery['light'],
+#                                                              defaultArgs(qos), lSensor))
 
     # send the measured values to the broker endpoint other clients can access
-    mqtt.publish('temperature', tSensorValue)
-    mqtt.publish('humidity', hSensorValue)
-    mqtt.publish('light', lSensorValue)
+#    mqtt.publish('temperature', tSensorValue)
+#    mqtt.publish('humidity', hSensorValue)
+#    mqtt.publish('light', lSensorValue)
 #-------------------------------------------------------------------------------
 
 # Timer class for constantly updating the sensor information
@@ -473,8 +481,8 @@ class RepeatTimer(Timer):
             self.function(*self.args, **self.kwargs)
 
 # start sensor thread
-timer = RepeatTimer(1, extractSensorInfo)
-timer.start()
+#timer = RepeatTimer(1, extractSensorInfo)
+#timer.start()
 
 #----------CALLBACKS-FOR-SUBSCRIBER-TO-SENSOR-VALUES-----------------------------
 @subscribe('light')
@@ -503,6 +511,8 @@ def handle_mqtt_message(client, userdata, message):
     # address the mqtt.publish input to the corresponding api-specification
     matching_keys, parameters = match_keys_and_parameters(topic)
     invoke_callbacks(matching_keys, parameters, payload)
+
+
 #-----------------------------------------------------------------------------------------------------------------------
 
 
