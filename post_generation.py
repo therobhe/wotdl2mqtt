@@ -84,5 +84,5 @@ with open(OPENAPI_FILE_NAME, 'r') as api_file:
                 print(line.replace(REPLACE_TEXT, REPLACEMENT), end='')
 
 
-#TODO: in __main__.py add custom resolver
+
 

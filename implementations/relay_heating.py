@@ -2,7 +2,13 @@ import time
 import grovepi
 from flask import Response
 from .heating_thread import HeatingThread
+<<<<<<< Updated upstream
 from .. import hub
+=======
+#from .. import hub
+
+
+>>>>>>> Stashed changes
 
 def init():
     hub.PERSISTENCE['WORKER'] = HeatingThread()

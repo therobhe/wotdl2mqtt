@@ -4,9 +4,11 @@
 # (c) Robert Heinemann 2019
 
 import paho.mqtt.publish as publish
+import paho.mqtt.subscribe as subscribe
 import rdflib
 import re
 import hub
+import eventlet
 from threading import Timer
 from collections import defaultdict
 from rdflib import OWL, RDFS, Namespace
@@ -310,7 +312,12 @@ def callback6(message):
                         functionname = invObj[obj]
                         print('FUNCTIONNAME: ' + functionname)
     # call device implementation hub, search for function on device and invoke it
+<<<<<<< Updated upstream
     return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
+=======
+    #return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
+    dc_motor_fan.fan_set(message)
+>>>>>>> Stashed changes
 
 # speed up -> hub needs to call increase_fan_speed() in dc_motor_fan.py
 @subscribe('fan/3/increaseSpeed')
@@ -331,7 +338,12 @@ def callback7(message):
                         functionname = invObj[obj]
                         print('FUNCTIONNAME: ' + functionname)
     # call device implementation hub, search for function on device and invoke it
+<<<<<<< Updated upstream
     return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
+=======
+    #return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
+    dc_motor_fan.increase_fan_speed(message)
+>>>>>>> Stashed changes
 
 # slow down fan -> hub needs to call decrease_fan_speed() in dc_motor_fan.py
 @subscribe('fan/3/decreaseSpeed')
@@ -352,7 +364,12 @@ def callback8(message):
                         functionname = invObj[obj]
                         print('FUNCTIONNAME: ' + functionname)
     # call device implementation hub, search for function on device and invoke it
+<<<<<<< Updated upstream
     return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
+=======
+    #return hub.invoke_implementation(functionname, parameterList, defaultArgs(qos), dev)
+    dc_motor_fan.decrease_fan_speed(message)
+>>>>>>> Stashed changes
 
 #--------------TV-ACTUATIONS----------------
 # tv on -> hub needs to call switch_on_tv() in samsung_tv.py
@@ -452,6 +469,7 @@ def callback11(message):
 #                        hFunction = invObj[obj]
 
     # return values are in JSON format, need to get translated to strings for being transferable with mqtt.push()
+<<<<<<< Updated upstream
 #    def buildMQTTMessage(retVal):
 #        for keys in retVal:
 #            if (keys == 'text' or keys == 'light-value'):
@@ -461,6 +479,23 @@ def callback11(message):
 #        return answer
 
     # use the found information to call the device hub -> invoke the functions on the device(& return the value)
+=======
+    def buildMQTTMessage(retVal):
+        for keys in retVal:
+            if (keys == 'text' or keys == 'light-value'):
+                answer = "Light-Value: " + str(retVal[keys])
+            if(keys == 'resistance-value'):
+                answer+= ' Resistance: ' + str(retVal[keys])
+            if keys == 'unit':
+                answer+= ' ' + str(retVal[keys])
+        return answer
+
+    mqtt.publish('light', buildMQTTMessage(light_sensor.get_light_intensity(1)))
+    mqtt.publish('temperature', buildMQTTMessage(temperature_humidity_sensor.get_temperature(1)))
+    mqtt.publish('humidity', buildMQTTMessage(temperature_humidity_sensor.get_humidity(1)))
+
+   # use the found information to call the device hub -> invoke the functions on the device(& return the value)
+>>>>>>> Stashed changes
 #    tSensorValue = buildMQTTMessage(hub.invoke_implementation(tFunction, parameter_registery['temperature'],
 #                                                              defaultArgs(qos), tSensor))
 #    hSensorValue = buildMQTTMessage(hub.invoke_implementation(hFunction, parameter_registery['humidity'],
@@ -481,8 +516,14 @@ class RepeatTimer(Timer):
             self.function(*self.args, **self.kwargs)
 
 # start sensor thread
+<<<<<<< Updated upstream
 #timer = RepeatTimer(1, extractSensorInfo)
 #timer.start()
+=======
+timer = RepeatTimer(1, extractSensorInfo)
+print("\nStarting to Publish Sensor Values\n")
+timer.start()
+>>>>>>> Stashed changes
 
 #----------CALLBACKS-FOR-SUBSCRIBER-TO-SENSOR-VALUES-----------------------------
 @subscribe('light')
@@ -561,7 +602,21 @@ def subscribe_tv():
     mqtt.subscribe('tv/4/on')
     mqtt.subscribe('tv/4/off')
 #-----------------------------------------------------------------------------------------------------------------------
+# subscribe to all available topics of ontology
+mqtt.subscribe('light/1/on')
+mqtt.subscribe('light/1/off')
 
+mqtt.subscribe('heating/2/on')
+mqtt.subscribe('heating/2/off')
+mqtt.subscribe('heating/2/setTemperature')
+
+mqtt.subscribe('fan/3/setFanSpeed')
+mqtt.subscribe('fan/3/off')
+mqtt.subscribe('fan/3/increaseSpeed')
+mqtt.subscribe('fan/3/decreaseSpeed')
+
+mqtt.subscribe('tv/4/on')
+mqtt.subscribe('tv/4/off')
 # @mqtt.on_log()
 # def handle_logging(client, userdata, level, buf):
 #     print(level, buf)
